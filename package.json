@@ -1,8 +1,8 @@
 {
   "name": "temporary-chat",
   "displayName": "Temporary Chat",
-  "description": "Open a disposable AI chat panel with a customizable prompt.",
-  "version": "0.0.2",
+  "description": "Open a AI chat panel.",
+  "version": "0.1.0",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -94,6 +94,7 @@
     "dompurify": "^3.4.12",
     "katex": "^0.18.1",
     "markdown-it": "^14.3.0",
-    "markdown-it-texmath": "^1.0.0"
+    "markdown-it-texmath": "^1.0.0",
+    "prismjs": "^1.30.0"
   }
 }
