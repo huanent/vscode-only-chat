@@ -1,8 +1,8 @@
 {
   "name": "temporary-chat",
   "displayName": "Temporary Chat",
-  "description": "Open a AI chat panel.",
-  "version": "0.1.0",
+  "description": "Open a temporary AI chat panel",
+  "version": "1.0.0",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",

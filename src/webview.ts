@@ -50,7 +50,12 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.message-anchor:hover { color: var(--vscode-foreground); }
 		.message-anchor.active { color: var(--vscode-focusBorder); }
 		.message-anchor.active::before { width: 11px; border-radius: 3px; opacity: 1; }
-		.empty { display: none; }
+		.empty { min-height: 100%; display: grid; place-content: center; justify-items: center; padding: 32px 0 72px; text-align: center; }
+		.empty[hidden] { display: none; }
+		.empty-mark { display: grid; place-items: center; margin-bottom: 16px; color: var(--vscode-icon-foreground); }
+		.empty-mark .codicon { font-size: 36px; }
+		.empty-title { margin: 0; font-size: 18px; font-weight: 600; }
+		.empty-description { max-width: 420px; margin: 7px 0 0; color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.5; }
 		.message { display: flex; padding: 12px 0; }
 		.message-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
 		.message-content { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
@@ -154,7 +159,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.history-row:hover .delete-history, .history-row:focus-within .delete-history, .history-row.active .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
 		@media (prefers-reduced-motion: reduce) { .history-visible .history-panel, .model-picker.open .model-menu { animation: none; } }
-		@media (max-width: 620px) { .model-picker { max-width: 42vw; } .message-navigation { display: none !important; } }
+		@media (max-width: 620px) { .model-picker { max-width: 42vw; } .message-navigation { display: none !important; } .empty { padding-bottom: 32px; } }
 	</style>
 </head>
 <body>
@@ -181,7 +186,11 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			<div class="chat-area">
 				<nav id="message-navigation" class="message-navigation" aria-label="Message navigation"></nav>
 				<main id="messages" class="messages">
-					<div id="empty" class="empty"></div>
+					<div id="empty" class="empty">
+						<div class="empty-mark"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></div>
+						<h1 class="empty-title">What are you working on?</h1>
+						<p class="empty-description">Start with a question, a piece of code, or an idea you want to explore.</p>
+					</div>
 				</main>
 				<section class="composer">
 					<div class="input-shell">
