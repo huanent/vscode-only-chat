@@ -24,6 +24,7 @@ type WebviewMessage =
 	| { type: 'openSettings' };
 
 const commandId = 'temporaryChat.open';
+const newConversationCommandId = 'temporaryChat.newConversation';
 const selectedModelStorageKey = 'temporaryChat.selectedModelId';
 const conversationStorageKey = 'temporaryChat.conversation';
 const conversationsStorageKey = 'temporaryChat.conversations';
@@ -32,6 +33,7 @@ const currentConversationStorageKey = 'temporaryChat.currentConversationId';
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commandId, () => TemporaryChatPanel.show(context)),
+		vscode.commands.registerCommand(newConversationCommandId, () => TemporaryChatPanel.startNewConversation(context)),
 	);
 }
 
@@ -65,6 +67,11 @@ class TemporaryChatPanel {
 		panel.iconPath = new vscode.ThemeIcon('comment-discussion');
 
 		TemporaryChatPanel.current = new TemporaryChatPanel(panel, context);
+	}
+
+	static async startNewConversation(context: vscode.ExtensionContext) {
+		TemporaryChatPanel.show(context);
+		await TemporaryChatPanel.current?.newConversation();
 	}
 
 	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext) {
@@ -190,13 +197,14 @@ class TemporaryChatPanel {
 	private async loadModels() {
 		try {
 			const models = await vscode.lm.selectChatModels();
+			const providerNames = await getLanguageModelProviderNames(this.context, models);
 			await this.panel.webview.postMessage({
 				type: 'models',
 				selectedModelId: this.context.globalState.get<string>(selectedModelStorageKey),
 				models: models.map(model => ({
 					id: model.id,
 					name: model.name,
-					vendor: model.vendor,
+					providerName: providerNames.get(model.id) ?? model.vendor,
 					family: model.family,
 				})),
 			});
@@ -296,6 +304,10 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 	const nonce = getNonce();
 	const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css'));
 	const markdownItUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'markdown-it', 'dist', 'markdown-it.min.js'));
+	const katexCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'katex', 'dist', 'katex.min.css'));
+	const katexUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'katex', 'dist', 'katex.min.js'));
+	const texmathCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'markdown-it-texmath', 'css', 'texmath.css'));
+	const texmathUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'markdown-it-texmath', 'texmath.js'));
 	const domPurifyUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'dompurify', 'dist', 'purify.min.js'));
 
 	return `<!DOCTYPE html>
@@ -303,9 +315,11 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src ${webview.cspSource} 'nonce-${nonce}';">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; style-src-attr 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';">
 	<title>New conversation</title>
 	<link rel="stylesheet" href="${codiconsUri}">
+	<link rel="stylesheet" href="${katexCssUri}">
+	<link rel="stylesheet" href="${texmathCssUri}">
 	<style nonce="${nonce}">
 		:root { color-scheme: light dark; }
 		* { box-sizing: border-box; }
@@ -314,14 +328,14 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		button { cursor: pointer; }
 		button:focus-visible, select:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 		button:disabled { cursor: default; opacity: .5; }
-		.app { height: 100vh; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
-		header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
+		.app { position: relative; height: 100vh; padding:0 4px; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
+		header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
 		.conversation-summary { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 		.header-actions { display: flex; align-items: center; gap: 2px; }
 		.icon-button { width: 28px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.icon-button .codicon { font-size: 16px; }
-		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 220px; }
+		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 		.chat-area { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
 		.messages { overflow-y: auto; padding: 18px max(16px, calc((100% - 760px) / 2)) 28px; scroll-padding-bottom: 24px; }
 		.empty { height: 100%; display: grid; place-content: center; color: var(--vscode-descriptionForeground); text-align: center; }
@@ -339,9 +353,13 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.message-content pre { overflow-x: auto; padding: 10px; background: var(--vscode-textCodeBlock-background); }
 		.message-content pre code { padding: 0; background: transparent; }
 		.message-content a { color: var(--vscode-textLink-foreground); }
-		.message-content table { display: block; width: max-content; max-width: 100%; overflow-x: auto; margin: 0 0 10px; border-collapse: collapse; border-spacing: 0; }
+		.message-content .table-scroll { max-width: 100%; overflow-x: auto; margin: 0 0 10px; }
+		.message-content table { width: max-content; min-width: 100%; border-collapse: collapse; border-spacing: 0; }
 		.message-content th, .message-content td { padding: 5px 8px; border: 1px solid var(--vscode-panel-border); text-align: left; }
 		.message-content th { background: var(--vscode-textBlockQuote-background); font-weight: 600; }
+		.message-content .katex, .message-content .katex * { box-sizing: content-box; overflow-wrap: normal; word-break: normal; }
+		.message-content .katex .fbox, .message-content .katex .fcolorbox, .message-content .katex .angl { box-sizing: border-box; }
+		.message-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 		.assistant { justify-content: flex-start; }
 		.user { justify-content: flex-end; }
 		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border-radius: 4px; background: var(--vscode-textBlockQuote-background); }
@@ -364,10 +382,9 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.send-button .codicon { font-size: 15px; }
 		.status { min-height: 15px; padding: 2px 1px 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
-		.history-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: 36px minmax(0, 1fr); overflow: hidden; border-left: 1px solid var(--vscode-panel-border); background: transparent; }
-		.history-heading { display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--vscode-panel-border); }
-		.history-heading strong { flex: 1; font-size: 12px; }
-		.history-list { overflow-y: auto; margin: 0; padding: 4px; background: transparent; list-style: none; }
+		.history-panel { position: absolute; z-index: 10; top: 36px; left: 4px; width: min(320px, calc(100% - 8px)); max-height: min(480px, calc(100vh - 44px)); display: none; overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 4px 12px var(--vscode-widget-shadow); }
+		.history-visible .history-panel { display: grid; }
+		.history-list { max-height: inherit; overflow-y: auto; margin: 0; padding: 4px; background: transparent; list-style: none; }
 		.history-empty { padding: 20px 10px; color: var(--vscode-descriptionForeground); text-align: center; }
 		.history-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; border-radius: 3px; background: transparent; }
 		.history-row.active { color: var(--vscode-list-activeSelectionForeground); }
@@ -378,18 +395,25 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.delete-history { opacity: 0; }
 		.history-row:hover .delete-history, .history-row:focus-within .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
-		@media (max-width: 620px) { .workspace { grid-template-columns: minmax(0, 1fr) 160px; } .messages { padding-inline: 12px; } .composer { padding: 8px; } select { max-width: 42vw; } }
+		@media (max-width: 620px) { .messages { padding-inline: 12px; } .composer { padding: 8px; } select { max-width: 42vw; } }
 	</style>
 </head>
 <body>
 	<div class="app">
 		<header>
+			<button id="toggle-history" class="icon-button" title="Show conversation history" aria-label="Show conversation history" aria-controls="history-panel" aria-expanded="false"><span class="codicon codicon-menu" aria-hidden="true"></span></button>
 			<div id="conversation-summary" class="conversation-summary" title="New conversation">New conversation</div>
 			<div class="header-actions">
+				<button id="new-conversation" class="icon-button" title="New conversation" aria-label="New conversation"><span class="codicon codicon-add" aria-hidden="true"></span></button>
 				<button id="open-prompt-settings" class="icon-button" title="Prompt settings" aria-label="Open prompt settings"><span class="codicon codicon-settings-gear" aria-hidden="true"></span></button>
 			</div>
 		</header>
-		<div class="workspace">
+		<div id="workspace" class="workspace">
+			<aside id="history-panel" class="history-panel" aria-label="Conversation history">
+				<ul id="history-list" class="history-list">
+					<li class="history-empty">No conversation history</li>
+				</ul>
+			</aside>
 			<div class="chat-area">
 				<main id="messages" class="messages">
 					<div id="empty" class="empty"><div class="empty-mark"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></div><span>New conversation</span></div>
@@ -408,22 +432,19 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 					<div id="status" class="status" aria-live="polite"></div>
 				</section>
 			</div>
-			<aside class="history-panel" aria-label="Conversation history">
-				<div class="history-heading">
-					<strong>Conversation history</strong>
-					<button id="new-conversation" class="icon-button" title="New conversation" aria-label="New conversation"><span class="codicon codicon-add" aria-hidden="true"></span></button>
-				</div>
-				<ul id="history-list" class="history-list">
-					<li class="history-empty">No conversation history</li>
-				</ul>
-			</aside>
 		</div>
 	</div>
 	<script nonce="${nonce}" src="${markdownItUri}"></script>
+	<script nonce="${nonce}" src="${katexUri}"></script>
+	<script nonce="${nonce}" src="${texmathUri}"></script>
 	<script nonce="${nonce}" src="${domPurifyUri}"></script>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
-		const markdown = window.markdownit({ breaks: true, html: false, linkify: true });
+		const markdown = window.markdownit({ breaks: true, html: false, linkify: true }).use(window.texmath, {
+			engine: window.katex,
+			delimiters: 'dollars',
+			katexOptions: { strict: 'ignore', throwOnError: false },
+		});
 		const messages = document.getElementById('messages');
 		const empty = document.getElementById('empty');
 		const input = document.getElementById('input');
@@ -431,14 +452,30 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		const sendButton = document.getElementById('send');
 		const status = document.getElementById('status');
 		const conversationSummary = document.getElementById('conversation-summary');
+		const workspace = document.getElementById('workspace');
+		const toggleHistoryButton = document.getElementById('toggle-history');
+		const historyPanel = document.getElementById('history-panel');
 		const historyList = document.getElementById('history-list');
 		let assistantContent;
 		let assistantText = '';
 		let busy = false;
 		let currentConversationId;
 
+		function setHistoryVisible(visible) {
+			workspace.classList.toggle('history-visible', visible);
+			toggleHistoryButton.title = visible ? 'Hide conversation history' : 'Show conversation history';
+			toggleHistoryButton.setAttribute('aria-label', toggleHistoryButton.title);
+			toggleHistoryButton.setAttribute('aria-expanded', String(visible));
+		}
+
 		function renderMarkdown(element, text) {
 			element.innerHTML = DOMPurify.sanitize(markdown.render(text));
+			for (const table of element.querySelectorAll('table')) {
+				const scrollContainer = document.createElement('div');
+				scrollContainer.className = 'table-scroll';
+				table.parentNode.insertBefore(scrollContainer, table);
+				scrollContainer.appendChild(table);
+			}
 		}
 
 		function isNearBottom() {
@@ -501,6 +538,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 				time.textContent = new Date(conversation.updatedAt).toLocaleString();
 				openButton.append(title, time);
 				openButton.addEventListener('click', () => {
+					setHistoryVisible(false);
 					vscode.postMessage({ type: 'selectConversation', conversationId: conversation.id });
 				});
 				const deleteButton = document.createElement('button');
@@ -550,6 +588,17 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 
 		sendButton.addEventListener('click', send);
 		modelSelect.addEventListener('change', () => vscode.postMessage({ type: 'selectModel', modelId: modelSelect.value }));
+		toggleHistoryButton.addEventListener('click', () => {
+			setHistoryVisible(!workspace.classList.contains('history-visible'));
+		});
+		document.addEventListener('click', event => {
+			if (!historyPanel.contains(event.target) && !toggleHistoryButton.contains(event.target)) {
+				setHistoryVisible(false);
+			}
+		});
+		document.addEventListener('keydown', event => {
+			if (event.key === 'Escape') setHistoryVisible(false);
+		});
 		document.getElementById('new-conversation').addEventListener('click', () => vscode.postMessage({ type: 'newConversation' }));
 		document.getElementById('open-prompt-settings').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
 		input.addEventListener('keydown', event => {
@@ -576,12 +625,23 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 			if (message.type === 'models') {
 				const selectedModelId = modelSelect.value || message.selectedModelId;
 				modelSelect.replaceChildren();
+				const modelsByProvider = new Map();
 				for (const model of message.models) {
-					const option = document.createElement('option');
-					option.value = model.id;
-					option.textContent = model.name + ' · ' + model.vendor;
-					option.title = model.family;
-					modelSelect.appendChild(option);
+					const providerModels = modelsByProvider.get(model.providerName) ?? [];
+					providerModels.push(model);
+					modelsByProvider.set(model.providerName, providerModels);
+				}
+				for (const [providerName, models] of modelsByProvider) {
+					const group = document.createElement('optgroup');
+					group.label = providerName;
+					for (const model of models) {
+						const option = document.createElement('option');
+						option.value = model.id;
+						option.textContent = model.name;
+						option.title = model.family;
+						group.appendChild(option);
+					}
+					modelSelect.appendChild(group);
 				}
 				if (message.models.length === 0) {
 					const option = document.createElement('option');
@@ -640,6 +700,60 @@ function createConversation(messages: StoredMessage[]): StoredConversation {
 		updatedAt: Date.now(),
 		messages,
 	};
+}
+
+async function getLanguageModelProviderNames(context: vscode.ExtensionContext, models: readonly vscode.LanguageModelChat[]) {
+	const namesByVendor = new Map<string, string>();
+	for (const extension of vscode.extensions.all) {
+		const providers = extension.packageJSON?.contributes?.languageModelChatProviders;
+		if (!Array.isArray(providers)) {
+			continue;
+		}
+		for (const provider of providers) {
+			if (typeof provider?.vendor !== 'string') {
+				continue;
+			}
+			const name = typeof provider.displayName === 'string'
+				? provider.displayName
+				: typeof provider.name === 'string' ? provider.name : undefined;
+			if (name) {
+				namesByVendor.set(provider.vendor, name);
+			}
+		}
+	}
+
+	let configuredProviders: Array<{
+		name?: string;
+		vendor?: string;
+		models?: Array<{ id?: string; name?: string }>;
+	}> = [];
+	try {
+		const configurationUri = vscode.Uri.joinPath(context.globalStorageUri, '..', '..', 'chatLanguageModels.json');
+		const content = await vscode.workspace.fs.readFile(configurationUri);
+		const parsed = JSON.parse(new TextDecoder().decode(content));
+		if (Array.isArray(parsed)) {
+			configuredProviders = parsed;
+		}
+	} catch {
+		configuredProviders = [];
+	}
+
+	const providerNames = new Map<string, string>();
+	for (const model of models) {
+		const configuredProvider = configuredProviders.find(provider =>
+			provider.vendor === model.vendor
+			&& provider.models?.some(candidate =>
+				candidate.id === model.id
+				|| candidate.id === model.family
+				|| candidate.name === model.name,
+			),
+		);
+		providerNames.set(
+			model.id,
+			configuredProvider?.name ?? namesByVendor.get(model.vendor) ?? model.vendor,
+		);
+	}
+	return providerNames;
 }
 
 function createSummary(text: string) {

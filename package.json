@@ -2,7 +2,7 @@
   "name": "temporary-chat",
   "displayName": "Temporary Chat",
   "description": "Open a disposable AI chat panel with a customizable prompt.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "publisher": "huanent",
   "repository": {
@@ -24,6 +24,11 @@
         "command": "temporaryChat.open",
         "title": "Open Temporary AI Chat",
         "category": "Temporary Chat"
+      },
+      {
+        "command": "temporaryChat.newConversation",
+        "title": "New Chat",
+        "category": "Temporary Chat"
       }
     ],
     "keybindings": [
@@ -31,6 +36,12 @@
         "command": "temporaryChat.open",
         "key": "ctrl+alt+i",
         "mac": "cmd+alt+i"
+      },
+      {
+        "command": "temporaryChat.newConversation",
+        "key": "ctrl+n",
+        "mac": "cmd+n",
+        "when": "activeWebviewPanelId == temporaryChat"
       }
     ],
     "configuration": {
@@ -38,7 +49,7 @@
       "properties": {
         "temporaryChat.prompt": {
           "type": "string",
-          "default": "Respond clearly, accurately, and concisely.",
+          "default": "",
           "markdownDescription": "The default prompt used for temporary conversations.",
           "scope": "window"
         }
@@ -71,6 +82,8 @@
   "dependencies": {
     "@vscode/codicons": "^0.0.46-24",
     "dompurify": "^3.4.12",
-    "markdown-it": "^14.3.0"
+    "katex": "^0.18.1",
+    "markdown-it": "^14.3.0",
+    "markdown-it-texmath": "^1.0.0"
   }
 }
