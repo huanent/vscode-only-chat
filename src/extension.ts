@@ -441,19 +441,34 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.send-button .codicon { font-size: 15px; }
 		.status { min-height: 15px; padding: 2px 1px 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
-		.history-panel { position: absolute; z-index: 10; top: 36px; left: 4px; width: min(320px, calc(100% - 8px)); max-height: min(480px, calc(100vh - 44px)); display: none; overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 4px 12px var(--vscode-widget-shadow); }
-		.history-visible .history-panel { display: grid; }
-		.history-list { max-height: inherit; overflow-y: auto; margin: 0; padding: 4px; background: transparent; list-style: none; }
-		.history-empty { padding: 20px 10px; color: var(--vscode-descriptionForeground); text-align: center; }
-		.history-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; border-radius: 3px; background: transparent; }
-		.history-row.active { color: var(--vscode-list-activeSelectionForeground); }
-		.history-item { min-width: 0; padding: 7px 8px; border: 0; color: inherit; background: transparent; text-align: left; }
-		.history-item-title, .history-item-time { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-		.history-item-time { margin-top: 2px; color: var(--vscode-descriptionForeground); font-size: 10px; }
-		.history-row.active .history-item-time { color: inherit; opacity: .8; }
-		.delete-history { opacity: 0; }
-		.history-row:hover .delete-history, .history-row:focus-within .delete-history { opacity: 1; }
+		.history-panel { position: absolute; z-index: 10; top: 42px; left: 8px; width: min(360px, calc(100% - 16px)); max-height: min(520px, calc(100vh - 54px)); display: none; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 8px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 8px 24px var(--vscode-widget-shadow); }
+		.history-visible .history-panel { display: grid; animation: reveal-history 120ms ease-out; transform-origin: top left; }
+		@keyframes reveal-history { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+		.history-header { min-height: 44px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
+		.history-header-icon { color: var(--vscode-icon-foreground); font-size: 16px; }
+		.history-heading { min-width: 0; display: flex; align-items: baseline; gap: 7px; }
+		.history-title { font-size: 12px; font-weight: 600; }
+		.history-count { color: var(--vscode-descriptionForeground); font-size: 10px; }
+		.history-list { min-height: 0; overflow-y: auto; margin: 0; padding: 6px; background: transparent; list-style: none; }
+		.history-empty { min-height: 150px; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 24px 16px; color: var(--vscode-descriptionForeground); text-align: center; }
+		.history-empty .codicon { font-size: 24px; opacity: .65; }
+		.history-empty-title { color: var(--vscode-foreground); font-size: 12px; font-weight: 600; }
+		.history-empty-description { max-width: 220px; font-size: 11px; line-height: 1.4; }
+		.history-group { padding: 10px 8px 5px; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; text-transform: uppercase; }
+		.history-group:first-child { padding-top: 4px; }
+		.history-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; min-height: 40px; border-radius: 5px; color: var(--vscode-foreground); background: transparent; }
+		.history-row + .history-row { margin-top: 2px; }
+		.history-row:hover, .history-row:focus-within { background: var(--vscode-list-hoverBackground); }
+		.history-row.active { color: var(--vscode-list-activeSelectionForeground); background: var(--vscode-list-activeSelectionBackground); }
+		.history-item { min-width: 0; height: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 2px; padding: 6px 4px 6px 8px; border: 0; color: inherit; background: transparent; text-align: left; }
+		.history-item-icon { color: var(--vscode-icon-foreground); font-size: 15px; opacity: .8; }
+		.history-item-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.history-item-title { font-size: 12px; font-weight: 500; }
+		.history-row.active .history-item-icon { color: inherit; opacity: .82; }
+		.delete-history { margin-right: 8px; opacity: 0; }
+		.history-row:hover .delete-history, .history-row:focus-within .delete-history, .history-row.active .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
+		@media (prefers-reduced-motion: reduce) { .history-visible .history-panel { animation: none; } }
 		@media (max-width: 620px) { select { max-width: 42vw; } }
 	</style>
 </head>
@@ -469,8 +484,16 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		</header>
 		<div id="workspace" class="workspace">
 			<aside id="history-panel" class="history-panel" aria-label="Conversation history">
+				<div class="history-header">
+					<span class="codicon codicon-history history-header-icon" aria-hidden="true"></span>
+					<div class="history-heading">
+						<span class="history-title">Conversation history</span>
+						<span id="history-count" class="history-count">0 chats</span>
+					</div>
+					<button id="close-history" class="icon-button" title="Close history" aria-label="Close conversation history"><span class="codicon codicon-close" aria-hidden="true"></span></button>
+				</div>
 				<ul id="history-list" class="history-list">
-					<li class="history-empty">No conversation history</li>
+					<li class="history-empty"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><span class="history-empty-title">No conversations yet</span><span class="history-empty-description">Your recent chats will appear here.</span></li>
 				</ul>
 			</aside>
 			<div class="chat-area">
@@ -515,6 +538,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		const toggleHistoryButton = document.getElementById('toggle-history');
 		const historyPanel = document.getElementById('history-panel');
 		const historyList = document.getElementById('history-list');
+		const historyCount = document.getElementById('history-count');
 		let assistantContent;
 		let assistantText = '';
 		let busy = false;
@@ -576,26 +600,36 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 
 		function renderConversations(conversations) {
 			historyList.replaceChildren();
+			historyCount.textContent = conversations.length + (conversations.length === 1 ? ' chat' : ' chats');
 			if (conversations.length === 0) {
 				const emptyItem = document.createElement('li');
 				emptyItem.className = 'history-empty';
-				emptyItem.textContent = 'No conversation history';
+				emptyItem.innerHTML = '<span class="codicon codicon-comment-discussion" aria-hidden="true"></span><span class="history-empty-title">No conversations yet</span><span class="history-empty-description">Your recent chats will appear here.</span>';
 				historyList.appendChild(emptyItem);
 				return;
 			}
 
+			let currentGroup;
 			for (const conversation of conversations) {
+				const group = getConversationGroup(conversation.updatedAt);
+				if (group !== currentGroup) {
+					currentGroup = group;
+					const heading = document.createElement('li');
+					heading.className = 'history-group';
+					heading.textContent = group;
+					historyList.appendChild(heading);
+				}
 				const row = document.createElement('li');
 				row.className = 'history-row' + (conversation.id === currentConversationId ? ' active' : '');
 				const openButton = document.createElement('button');
 				openButton.className = 'history-item';
+				const icon = document.createElement('span');
+				icon.className = 'codicon codicon-comment history-item-icon';
+				icon.setAttribute('aria-hidden', 'true');
 				const title = document.createElement('span');
 				title.className = 'history-item-title';
 				title.textContent = conversation.summary;
-				const time = document.createElement('span');
-				time.className = 'history-item-time';
-				time.textContent = new Date(conversation.updatedAt).toLocaleString();
-				openButton.append(title, time);
+				openButton.append(icon, title);
 				openButton.addEventListener('click', () => {
 					setHistoryVisible(false);
 					vscode.postMessage({ type: 'selectConversation', conversationId: conversation.id });
@@ -612,6 +646,19 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 				row.append(openButton, deleteButton);
 				historyList.appendChild(row);
 			}
+		}
+
+		function getConversationGroup(updatedAt) {
+			const date = new Date(updatedAt);
+			const now = new Date();
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const conversationDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+			const daysAgo = Math.round((today.getTime() - conversationDay.getTime()) / 86400000);
+			if (daysAgo <= 0) return 'Today';
+			if (daysAgo === 1) return 'Yesterday';
+			if (daysAgo <= 3) return 'Previous 3 days';
+			if (daysAgo <= 7) return 'Previous 7 days';
+			return 'Older';
 		}
 
 		function setBusy(value) {
@@ -650,6 +697,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		toggleHistoryButton.addEventListener('click', () => {
 			setHistoryVisible(!workspace.classList.contains('history-visible'));
 		});
+		document.getElementById('close-history').addEventListener('click', () => setHistoryVisible(false));
 		document.addEventListener('click', event => {
 			if (!historyPanel.contains(event.target) && !toggleHistoryButton.contains(event.target)) {
 				setHistoryVisible(false);
