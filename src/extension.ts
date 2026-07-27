@@ -25,6 +25,8 @@ type WebviewMessage =
 
 const commandId = 'temporaryChat.open';
 const newConversationCommandId = 'temporaryChat.newConversation';
+const editorViewType = 'temporaryChat.editor';
+const editorUri = vscode.Uri.parse('temporary-chat:/Temporary Chat.temporary-chat');
 const selectedModelStorageKey = 'temporaryChat.selectedModelId';
 const conversationStorageKey = 'temporaryChat.conversation';
 const conversationsStorageKey = 'temporaryChat.conversations';
@@ -34,62 +36,98 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commandId, () => TemporaryChatPanel.show(context)),
 		vscode.commands.registerCommand(newConversationCommandId, () => TemporaryChatPanel.startNewConversation(context)),
+		vscode.window.registerCustomEditorProvider(editorViewType, new TemporaryChatEditorProvider(context), {
+			webviewOptions: { retainContextWhenHidden: true },
+			supportsMultipleEditorsPerDocument: true,
+		}),
 	);
 }
 
 export function deactivate() { }
 
-class TemporaryChatPanel {
-	private static current: TemporaryChatPanel | undefined;
-	private readonly panel: vscode.WebviewPanel;
-	private readonly context: vscode.ExtensionContext;
-	private readonly disposables: vscode.Disposable[] = [];
-	private conversations: StoredConversation[];
-	private currentConversationId: string;
-	private cancellation: vscode.CancellationTokenSource | undefined;
+class TemporaryChatDocument implements vscode.CustomDocument {
+	readonly conversations: StoredConversation[];
 
-	static show(context: vscode.ExtensionContext) {
-		if (TemporaryChatPanel.current) {
-			TemporaryChatPanel.current.panel.reveal(vscode.ViewColumn.Beside);
-			return;
-		}
-
-		const panel = vscode.window.createWebviewPanel(
-			'temporaryChat',
-			'New conversation',
-			vscode.ViewColumn.Beside,
-			{
-				enableScripts: true,
-				retainContextWhenHidden: true,
-				localResourceRoots: [context.extensionUri],
-			},
-		);
-		panel.iconPath = new vscode.ThemeIcon('comment-discussion');
-
-		TemporaryChatPanel.current = new TemporaryChatPanel(panel, context);
-	}
-
-	static async startNewConversation(context: vscode.ExtensionContext) {
-		TemporaryChatPanel.show(context);
-		await TemporaryChatPanel.current?.newConversation();
-	}
-
-	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext) {
-		this.panel = panel;
-		this.context = context;
+	constructor(readonly uri: vscode.Uri, context: vscode.ExtensionContext) {
 		this.conversations = context.globalState.get<StoredConversation[]>(conversationsStorageKey, []);
 		if (this.conversations.length === 0) {
 			const legacyMessages = context.globalState.get<StoredMessage[]>(conversationStorageKey, []);
 			if (legacyMessages.length > 0) {
-				this.conversations = [createConversation(legacyMessages)];
+				this.conversations.push(createConversation(legacyMessages));
 			}
 		}
+	}
+
+	dispose() { }
+}
+
+class TemporaryChatEditorProvider implements vscode.CustomReadonlyEditorProvider<TemporaryChatDocument> {
+	constructor(private readonly context: vscode.ExtensionContext) { }
+
+	openCustomDocument(uri: vscode.Uri) {
+		return new TemporaryChatDocument(uri, this.context);
+	}
+
+	resolveCustomEditor(document: TemporaryChatDocument, panel: vscode.WebviewPanel) {
+		TemporaryChatPanel.resolve(panel, this.context, document);
+	}
+}
+
+class TemporaryChatPanel {
+	private static readonly editors = new Set<TemporaryChatPanel>();
+	private static current: TemporaryChatPanel | undefined;
+	private readonly panel: vscode.WebviewPanel;
+	private readonly context: vscode.ExtensionContext;
+	private readonly document: TemporaryChatDocument;
+	private readonly disposables: vscode.Disposable[] = [];
+	private currentConversationId: string;
+	private cancellation: vscode.CancellationTokenSource | undefined;
+
+	static async show(context: vscode.ExtensionContext) {
+		if (TemporaryChatPanel.current) {
+			TemporaryChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
+			return;
+		}
+		await vscode.commands.executeCommand('vscode.openWith', editorUri, editorViewType, {
+			viewColumn: vscode.ViewColumn.Active,
+		});
+	}
+
+	static async startNewConversation(context: vscode.ExtensionContext) {
+		await TemporaryChatPanel.show(context);
+		await TemporaryChatPanel.current?.newConversation();
+	}
+
+	static resolve(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: TemporaryChatDocument) {
+		const editor = new TemporaryChatPanel(panel, context, document);
+		TemporaryChatPanel.editors.add(editor);
+		TemporaryChatPanel.current = editor;
+	}
+
+	private static getEditors(document: TemporaryChatDocument) {
+		return [...TemporaryChatPanel.editors].filter(editor => editor.document === document);
+	}
+
+	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: TemporaryChatDocument) {
+		this.panel = panel;
+		this.context = context;
+		this.document = document;
 		this.currentConversationId = context.globalState.get<string>(currentConversationStorageKey)
-			?? this.conversations[0]?.id
+			?? document.conversations[0]?.id
 			?? randomUUID();
+		this.panel.webview.options = {
+			enableScripts: true,
+			localResourceRoots: [context.extensionUri],
+		};
+		this.panel.iconPath = new vscode.ThemeIcon('comment-discussion');
 		this.panel.webview.html = getWebviewHtml(this.panel.webview, context.extensionUri);
 
 		this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
+		this.panel.onDidChangeViewState(event => {
+			if (event.webviewPanel.active) {
+				TemporaryChatPanel.current = this;
+			}
+		}, undefined, this.disposables);
 		this.panel.webview.onDidReceiveMessage(
 			(message: WebviewMessage) => this.handleMessage(message),
 			undefined,
@@ -101,7 +139,7 @@ class TemporaryChatPanel {
 	private async handleMessage(message: WebviewMessage) {
 		switch (message.type) {
 			case 'ready':
-				await Promise.all([this.loadModels(), this.loadConversations()]);
+				await Promise.all([this.loadModels(), this.renderConversations()]);
 				break;
 			case 'send':
 				await this.send(message.text, message.modelId);
@@ -127,46 +165,61 @@ class TemporaryChatPanel {
 		}
 	}
 
-	private async loadConversations() {
+	private getConversationItems() {
+		return [...this.document.conversations]
+			.sort((left, right) => right.updatedAt - left.updatedAt)
+			.map(conversation => ({
+				id: conversation.id,
+				summary: getConversationSummary(conversation),
+				updatedAt: conversation.updatedAt,
+			}));
+	}
+
+	private async refreshConversationHistory() {
+		const conversations = this.getConversationItems();
+		await Promise.all(TemporaryChatPanel.getEditors(this.document)
+			.filter(editor => editor !== this)
+			.map(editor => editor.panel.webview.postMessage({
+				type: 'conversationHistory',
+				conversations,
+			})));
+	}
+
+	private async renderConversations() {
 		const current = this.getCurrentConversation();
-		this.panel.title = current?.summary ?? 'New conversation';
+		this.panel.title = current ? createTabTitle(getConversationSummary(current)) : 'New conversation';
 		await this.panel.webview.postMessage({
 			type: 'conversations',
 			currentConversationId: current?.id ?? this.currentConversationId,
+			currentSummary: current ? getConversationTitle(current) : 'New conversation',
 			messages: current?.messages ?? [],
-			conversations: [...this.conversations]
-				.sort((left, right) => right.updatedAt - left.updatedAt)
-				.map(conversation => ({
-					id: conversation.id,
-					summary: conversation.summary,
-					updatedAt: conversation.updatedAt,
-				})),
+			conversations: this.getConversationItems(),
 		});
 	}
 
 	private getCurrentConversation() {
-		return this.conversations.find(conversation => conversation.id === this.currentConversationId);
+		return this.document.conversations.find(conversation => conversation.id === this.currentConversationId);
 	}
 
 	private async newConversation() {
 		this.cancel();
 		this.currentConversationId = randomUUID();
 		await this.persistConversations();
-		await this.loadConversations();
+		await this.renderConversations();
 	}
 
 	private async selectConversation(conversationId: string) {
-		if (!this.conversations.some(conversation => conversation.id === conversationId)) {
+		if (!this.document.conversations.some(conversation => conversation.id === conversationId)) {
 			return;
 		}
 		this.cancel();
 		this.currentConversationId = conversationId;
 		await this.context.globalState.update(currentConversationStorageKey, conversationId);
-		await this.loadConversations();
+		await this.renderConversations();
 	}
 
 	private async deleteConversation(conversationId: string) {
-		const conversation = this.conversations.find(candidate => candidate.id === conversationId);
+		const conversation = this.document.conversations.find(candidate => candidate.id === conversationId);
 		if (!conversation) {
 			return;
 		}
@@ -174,21 +227,23 @@ class TemporaryChatPanel {
 		if (answer !== 'Delete') {
 			return;
 		}
-		if (this.currentConversationId === conversationId) {
-			this.cancel();
-		}
-		this.conversations = this.conversations.filter(conversation => conversation.id !== conversationId);
-		if (this.currentConversationId === conversationId) {
-			this.currentConversationId = [...this.conversations]
-				.sort((left, right) => right.updatedAt - left.updatedAt)[0]?.id ?? randomUUID();
+		this.document.conversations.splice(0, this.document.conversations.length,
+			...this.document.conversations.filter(conversation => conversation.id !== conversationId));
+		for (const editor of TemporaryChatPanel.getEditors(this.document)) {
+			if (editor.currentConversationId === conversationId) {
+				editor.cancel();
+				editor.currentConversationId = [...this.document.conversations]
+					.sort((left, right) => right.updatedAt - left.updatedAt)[0]?.id ?? randomUUID();
+			}
 		}
 		await this.persistConversations();
-		await this.loadConversations();
+		await Promise.all(TemporaryChatPanel.getEditors(this.document)
+			.map(editor => editor.renderConversations()));
 	}
 
 	private async persistConversations() {
 		await Promise.all([
-			this.context.globalState.update(conversationsStorageKey, this.conversations),
+			this.context.globalState.update(conversationsStorageKey, this.document.conversations),
 			this.context.globalState.update(currentConversationStorageKey, this.currentConversationId),
 			this.context.globalState.update(conversationStorageKey, undefined),
 		]);
@@ -229,7 +284,7 @@ class TemporaryChatPanel {
 		const conversationId = this.currentConversationId;
 		const conversation = this.getCurrentConversation();
 		if (!conversation) {
-			this.panel.title = createSummary(userText);
+			this.panel.title = createTabTitle(userText);
 		}
 		const prompt = vscode.workspace.getConfiguration('temporaryChat').get<string>('prompt', '').trim();
 		const requestMessages = [
@@ -267,11 +322,14 @@ class TemporaryChatPanel {
 			);
 			updatedConversation.updatedAt = Date.now();
 			if (!conversation) {
-				this.conversations.push(updatedConversation);
+				this.document.conversations.push(updatedConversation);
 			}
 			await this.persistConversations();
 			await this.panel.webview.postMessage({ type: 'completed' });
-			await this.loadConversations();
+			await Promise.all([
+				this.renderConversations(),
+				this.refreshConversationHistory(),
+			]);
 		} catch (error) {
 			if (error instanceof vscode.CancellationError || cancellation.token.isCancellationRequested) {
 				await this.panel.webview.postMessage({ type: 'cancelled' });
@@ -293,7 +351,10 @@ class TemporaryChatPanel {
 
 	private dispose() {
 		this.cancel();
-		TemporaryChatPanel.current = undefined;
+		TemporaryChatPanel.editors.delete(this);
+		if (TemporaryChatPanel.current === this) {
+			TemporaryChatPanel.current = TemporaryChatPanel.getEditors(this.document)[0];
+		}
 		for (const disposable of this.disposables) {
 			disposable.dispose();
 		}
@@ -326,22 +387,20 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		body { margin: 0; padding:0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
 		button, select { font: inherit; }
 		button { cursor: pointer; }
-		button:focus-visible, select:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+		button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+		select:focus { outline: none; }
 		button:disabled { cursor: default; opacity: .5; }
 		.app { position: relative; height: 100vh; padding:0 4px; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
-		header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
-		.conversation-summary { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-		.header-actions { display: flex; align-items: center; gap: 2px; }
+		header { position: relative; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
+		.conversation-summary { position: absolute; left: 50%; width: min(calc(100% - 160px), 900px); overflow: hidden; font-size: 12px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; transform: translateX(-50%); }
+		.header-actions { z-index: 1; display: flex; align-items: center; gap: 2px; }
 		.icon-button { width: 28px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.icon-button .codicon { font-size: 16px; }
 		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 		.chat-area { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
-		.messages { overflow-y: auto; padding: 18px max(16px, calc((100% - 760px) / 2)) 28px; scroll-padding-bottom: 24px; }
-		.empty { height: 100%; display: grid; place-content: center; color: var(--vscode-descriptionForeground); text-align: center; }
-		.empty[hidden] { display: none; }
-		.empty-mark { width: 36px; height: 36px; display: grid; place-items: center; margin: 0 auto 10px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 6px; color: var(--vscode-icon-foreground); background: var(--vscode-editorWidget-background); }
-		.empty-mark .codicon { font-size: 19px; }
+		.messages { overflow-y: auto; padding: 18px max(80px, calc((100% - 900px) / 2)) 28px; scroll-padding-bottom: 24px; }
+		.empty { display: none; }
 		.message { display: flex; padding: 12px 0; }
 		.message-content { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
 		.message-content > :first-child { margin-top: 0; }
@@ -362,22 +421,22 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.message-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 		.assistant { justify-content: flex-start; }
 		.user { justify-content: flex-end; }
-		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border-radius: 4px; background: var(--vscode-textBlockQuote-background); }
+		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border: 1px solid var(--vscode-chat-requestBorder, var(--vscode-contrastBorder, var(--vscode-panel-border))); border-radius: 4px; background: var(--vscode-chat-requestBackground, var(--vscode-input-background, rgba(127, 127, 127, .12))); }
 		.message-content.loading { width: 32px; height: 24px; display: flex; align-items: center; gap: 3px; }
 		.message-content.loading::before, .message-content.loading::after { width: 4px; height: 4px; border-radius: 50%; background: var(--vscode-descriptionForeground); content: ""; animation: loading-dot 900ms ease-in-out infinite; }
 		.message-content.loading::after { animation-delay: 300ms; }
 		.message-content.loading { background-image: radial-gradient(circle, var(--vscode-descriptionForeground) 2px, transparent 2.5px); background-position: center; background-repeat: no-repeat; }
 		@keyframes loading-dot { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
-		.composer { padding: 10px max(16px, calc((100% - 760px) / 2)) 8px; background: var(--vscode-editor-background); }
-		.input-shell { overflow: hidden; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-editor-background); transition: border-color 80ms ease; }
+		.composer { padding: 8px max(80px, calc((100% - 900px) / 2)) 6px; background: var(--vscode-editor-background); }
+		.input-shell { overflow: hidden; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-input-background, rgba(127, 127, 127, .08)); transition: border-color 80ms ease; }
 		.input-shell:focus-within { border-color: var(--vscode-focusBorder); }
-		.message-input { width: 100%; min-height: 58px; max-height: 220px; overflow-y: auto; padding: 9px 10px 3px; color: var(--vscode-input-foreground); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
+		.message-input { width: 100%; min-height: 40px; max-height: 180px; overflow-y: auto; padding: 7px 10px 1px; color: var(--vscode-input-foreground); line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
 		.message-input:empty::before { color: var(--vscode-input-placeholderForeground); content: attr(data-placeholder); pointer-events: none; }
 		.message-input[contenteditable="false"] { opacity: .6; }
-		.input-toolbar { min-height: 32px; display: flex; align-items: center; gap: 6px; padding: 2px 4px 4px 5px; }
+		.input-toolbar { min-height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 4px 3px 5px; }
 		.input-toolbar .spacer { flex: 1; }
-		select { min-width: 0; max-width: min(60vw, 300px); height: 26px; padding: 0 24px 0 6px; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
-		select:hover { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
+		select { min-width: 0; max-width: min(60vw, 300px); height: 26px; padding: 0 16px 0 6px; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
+		select:hover { color: var(--vscode-foreground); background: rgba(127, 127, 127, .08); }
 		.send-button { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.send-button .codicon { font-size: 15px; }
@@ -395,7 +454,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 		.delete-history { opacity: 0; }
 		.history-row:hover .delete-history, .history-row:focus-within .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
-		@media (max-width: 620px) { .messages { padding-inline: 12px; } .composer { padding: 8px; } select { max-width: 42vw; } }
+		@media (max-width: 620px) { select { max-width: 42vw; } }
 	</style>
 </head>
 <body>
@@ -416,7 +475,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 			</aside>
 			<div class="chat-area">
 				<main id="messages" class="messages">
-					<div id="empty" class="empty"><div class="empty-mark"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></div><span>New conversation</span></div>
+					<div id="empty" class="empty"></div>
 				</main>
 				<section class="composer">
 					<div class="input-shell">
@@ -574,7 +633,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 			if (!text) return;
 			if (messages.children.length === 1 && !empty.hidden) {
 				const summary = text.replace(/\s+/g, ' ').trim();
-				conversationSummary.textContent = summary.length > 28 ? summary.slice(0, 28) + '…' : summary;
+				conversationSummary.textContent = summary;
 				conversationSummary.title = text;
 			}
 			appendMessage('user', text);
@@ -611,14 +670,16 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 
 		window.addEventListener('message', event => {
 			const message = event.data;
+			if (message.type === 'conversationHistory') {
+				renderConversations(message.conversations);
+			}
 			if (message.type === 'conversations') {
 				const preserveScroll = currentConversationId === message.currentConversationId;
 				currentConversationId = message.currentConversationId;
 				restoreConversation(message.messages, preserveScroll);
 				renderConversations(message.conversations);
-				const current = message.conversations.find(conversation => conversation.id === currentConversationId);
-				conversationSummary.textContent = current?.summary ?? 'New conversation';
-				conversationSummary.title = current?.summary ?? 'New conversation';
+				conversationSummary.textContent = message.currentSummary;
+				conversationSummary.title = message.currentSummary;
 				status.textContent = '';
 				setBusy(false);
 			}
@@ -758,7 +819,21 @@ async function getLanguageModelProviderNames(context: vscode.ExtensionContext, m
 
 function createSummary(text: string) {
 	const summary = text.replace(/\s+/g, ' ').trim();
-	return summary.length > 28 ? `${summary.slice(0, 28)}…` : summary;
+	return summary.length > 60 ? `${summary.slice(0, 60)}…` : summary;
+}
+
+function createTabTitle(text: string) {
+	const summary = text.replace(/\s+/g, ' ').trim();
+	return summary.length > 10 ? `${summary.slice(0, 10)}…` : summary;
+}
+
+function getConversationSummary(conversation: StoredConversation) {
+	return createSummary(getConversationTitle(conversation));
+}
+
+function getConversationTitle(conversation: StoredConversation) {
+	const firstUserMessage = conversation.messages.find(message => message.role === 'user')?.content;
+	return (firstUserMessage ?? conversation.summary).replace(/\s+/g, ' ').trim();
 }
 
 function getNonce() {

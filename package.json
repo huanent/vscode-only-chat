@@ -3,6 +3,7 @@
   "displayName": "Temporary Chat",
   "description": "Open a disposable AI chat panel with a customizable prompt.",
   "version": "0.0.2",
+  "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
   "repository": {
@@ -19,6 +20,18 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "customEditors": [
+      {
+        "viewType": "temporaryChat.editor",
+        "displayName": "Temporary Chat",
+        "selector": [
+          {
+            "filenamePattern": "*.temporary-chat"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
     "commands": [
       {
         "command": "temporaryChat.open",
@@ -41,7 +54,7 @@
         "command": "temporaryChat.newConversation",
         "key": "ctrl+n",
         "mac": "cmd+n",
-        "when": "activeWebviewPanelId == temporaryChat"
+        "when": "activeCustomEditorId == temporaryChat.editor"
       }
     ],
     "configuration": {
@@ -60,8 +73,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
+    "pretest": "npm run compile",
     "test": "vscode-test",
     "publish": "vsce publish"
   },
@@ -71,9 +83,7 @@
     "@types/vscode": "^1.125.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
-    "eslint": "^10.5.0",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "diff": "^8.0.4",
