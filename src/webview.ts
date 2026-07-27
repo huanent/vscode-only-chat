@@ -28,10 +28,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		:root { color-scheme: light dark; }
 		* { box-sizing: border-box; }
 		body { margin: 0; padding:0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
-		button, select { font: inherit; }
+		button { font: inherit; }
 		button { cursor: pointer; }
 		button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
-		select:focus { outline: none; }
 		button:disabled { cursor: default; opacity: .5; }
 		.app { position: relative; height: 100vh; padding:0 4px; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
 		header { position: relative; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
@@ -45,6 +44,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.messages { overflow-y: auto; padding: 18px max(80px, calc((100% - 900px) / 2)) 28px; scroll-padding-bottom: 24px; }
 		.empty { display: none; }
 		.message { display: flex; padding: 12px 0; }
+		.message-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
 		.message-content { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
 		.message-content > :first-child { margin-top: 0; }
 		.message-content > :last-child { margin-bottom: 0; }
@@ -74,22 +74,48 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.message-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 		.assistant { justify-content: flex-start; }
 		.user { justify-content: flex-end; }
+		.user .message-body { max-width: 82%; align-items: flex-end; }
 		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border: 1px solid var(--vscode-chat-requestBorder, var(--vscode-contrastBorder, var(--vscode-panel-border))); border-radius: 4px; background: var(--vscode-chat-requestBackground, var(--vscode-input-background, rgba(127, 127, 127, .12))); }
+		.user .message-content { max-width: 100%; }
+		.message-actions { height: 26px; display: flex; align-items: center; padding-top: 2px; opacity: 0; pointer-events: none; }
+		.message:hover .message-actions, .message:focus-within .message-actions { opacity: 1; pointer-events: auto; }
+		.message.pending .message-actions { visibility: hidden; pointer-events: none; }
+		.message-action { width: 24px; height: 24px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
+		.message-action:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
+		.message-action .codicon { font-size: 14px; }
+		.message-action:disabled { pointer-events: none; }
 		.message-content.loading { width: 32px; height: 24px; display: flex; align-items: center; gap: 3px; }
 		.message-content.loading::before, .message-content.loading::after { width: 4px; height: 4px; border-radius: 50%; background: var(--vscode-descriptionForeground); content: ""; animation: loading-dot 900ms ease-in-out infinite; }
 		.message-content.loading::after { animation-delay: 300ms; }
 		.message-content.loading { background-image: radial-gradient(circle, var(--vscode-descriptionForeground) 2px, transparent 2.5px); background-position: center; background-repeat: no-repeat; }
 		@keyframes loading-dot { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
 		.composer { padding: 8px max(80px, calc((100% - 900px) / 2)) 6px; background: var(--vscode-editor-background); }
-		.input-shell { overflow: hidden; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-input-background, rgba(127, 127, 127, .08)); transition: border-color 80ms ease; }
+		.input-shell { position: relative; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-input-background, rgba(127, 127, 127, .08)); transition: border-color 80ms ease; }
 		.input-shell:focus-within { border-color: var(--vscode-focusBorder); }
 		.message-input { width: 100%; min-height: 40px; max-height: 180px; overflow-y: auto; padding: 7px 10px 1px; color: var(--vscode-input-foreground); line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
 		.message-input:empty::before { color: var(--vscode-input-placeholderForeground); content: attr(data-placeholder); pointer-events: none; }
 		.message-input[contenteditable="false"] { opacity: .6; }
 		.input-toolbar { min-height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 4px 3px 5px; }
 		.input-toolbar .spacer { flex: 1; }
-		select { min-width: 0; max-width: min(60vw, 300px); height: 26px; padding: 0 16px 0 6px; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
-		select:hover { color: var(--vscode-foreground); background: rgba(127, 127, 127, .08); }
+		.model-picker { position: relative; min-width: 0; max-width: min(60vw, 300px); }
+		.model-trigger { min-width: 0; max-width: 100%; height: 26px; display: flex; align-items: center; gap: 5px; padding: 0 5px 0 6px; border: 0; border-radius: 4px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
+		.model-trigger:hover, .model-picker.open .model-trigger { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, .08)); }
+		.model-trigger .codicon { flex: none; font-size: 12px; }
+		.model-trigger-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.model-menu { position: absolute; z-index: 20; bottom: calc(100% + 5px); left: 0; width: min(320px, calc(100vw - 32px)); max-height: min(360px, calc(100vh - 150px)); display: none; overflow-y: auto; padding: 5px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 6px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 6px 20px var(--vscode-widget-shadow); }
+		.model-picker.open .model-menu { display: block; animation: reveal-model-menu 90ms ease-out; transform-origin: bottom left; }
+		@keyframes reveal-model-menu { from { opacity: 0; transform: translateY(3px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+		.model-provider { padding: 7px 7px 4px; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; }
+		.model-provider:first-child { padding-top: 3px; }
+		.model-option { width: 100%; min-height: 30px; display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 4px; padding: 4px 7px; border: 0; border-radius: 4px; color: var(--vscode-menu-foreground, var(--vscode-foreground)); background: transparent; text-align: left; }
+		.model-option:hover, .model-option:focus-visible { outline: 0; background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground)); color: var(--vscode-menu-selectionForeground, var(--vscode-foreground)); }
+		.model-option-check { font-size: 13px; visibility: hidden; }
+		.model-option[aria-selected="true"] .model-option-check { visibility: visible; }
+		.model-option-text { min-width: 0; }
+		.model-option-name, .model-option-family { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.model-option-name { font-size: 12px; }
+		.model-option-family { margin-top: 1px; color: var(--vscode-descriptionForeground); font-size: 10px; }
+		.model-menu-empty { padding: 8px; color: var(--vscode-descriptionForeground); font-size: 11px; }
 		.send-button { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.send-button .codicon { font-size: 15px; }
@@ -97,11 +123,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.history-panel { position: absolute; z-index: 10; top: 42px; left: 8px; width: min(360px, calc(100% - 16px)); max-height: min(520px, calc(100vh - 54px)); display: none; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 8px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 8px 24px var(--vscode-widget-shadow); }
 		.history-visible .history-panel { display: grid; animation: reveal-history 120ms ease-out; transform-origin: top left; }
 		@keyframes reveal-history { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-		.history-header { min-height: 44px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
+		.history-header { min-height: 40px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 11px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
 		.history-header-icon { color: var(--vscode-icon-foreground); font-size: 16px; }
-		.history-heading { min-width: 0; display: flex; align-items: baseline; gap: 7px; }
-		.history-title { font-size: 12px; font-weight: 600; }
-		.history-count { color: var(--vscode-descriptionForeground); font-size: 10px; }
+		.history-title { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 		.history-list { min-height: 0; overflow-y: auto; margin: 0; padding: 6px; background: transparent; list-style: none; }
 		.history-empty { min-height: 150px; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 24px 16px; color: var(--vscode-descriptionForeground); text-align: center; }
 		.history-empty .codicon { font-size: 24px; opacity: .65; }
@@ -121,8 +145,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.delete-history { margin-right: 8px; opacity: 0; }
 		.history-row:hover .delete-history, .history-row:focus-within .delete-history, .history-row.active .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
-		@media (prefers-reduced-motion: reduce) { .history-visible .history-panel { animation: none; } }
-		@media (max-width: 620px) { select { max-width: 42vw; } }
+		@media (prefers-reduced-motion: reduce) { .history-visible .history-panel, .model-picker.open .model-menu { animation: none; } }
+		@media (max-width: 620px) { .model-picker { max-width: 42vw; } }
 	</style>
 </head>
 <body>
@@ -139,10 +163,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			<aside id="history-panel" class="history-panel" aria-label="Conversation history">
 				<div class="history-header">
 					<span class="codicon codicon-history history-header-icon" aria-hidden="true"></span>
-					<div class="history-heading">
-						<span class="history-title">Conversation history</span>
-						<span id="history-count" class="history-count">0 chats</span>
-					</div>
+					<span class="history-title">Conversation history</span>
 					<button id="close-history" class="icon-button" title="Close history" aria-label="Close conversation history"><span class="codicon codicon-close" aria-hidden="true"></span></button>
 				</div>
 				<ul id="history-list" class="history-list">
@@ -157,9 +178,14 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 					<div class="input-shell">
 						<div id="input" class="message-input" role="textbox" aria-label="Message" aria-multiline="true" contenteditable="plaintext-only" data-placeholder="Type a message. Enter to send, Shift+Enter for a new line" autofocus></div>
 						<div class="input-toolbar">
-							<select id="model" aria-label="Language model" title="Select a language model" disabled>
-								<option value="">Loading models...</option>
-							</select>
+							<div id="model-picker" class="model-picker">
+								<button id="model-trigger" class="model-trigger" type="button" aria-label="Language model" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu" disabled>
+									<span class="codicon codicon-sparkle" aria-hidden="true"></span>
+									<span id="model-trigger-label" class="model-trigger-label">Loading models...</span>
+									<span class="codicon codicon-chevron-up" aria-hidden="true"></span>
+								</button>
+								<div id="model-menu" class="model-menu" role="listbox" aria-label="Language models"></div>
+							</div>
 							<span class="spacer"></span>
 							<button id="send" class="send-button" title="Send" aria-label="Send"><span class="codicon codicon-send" aria-hidden="true"></span></button>
 						</div>
@@ -185,7 +211,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const messages = document.getElementById('messages');
 		const empty = document.getElementById('empty');
 		const input = document.getElementById('input');
-		const modelSelect = document.getElementById('model');
+		const modelPicker = document.getElementById('model-picker');
+		const modelTrigger = document.getElementById('model-trigger');
+		const modelTriggerLabel = document.getElementById('model-trigger-label');
+		const modelMenu = document.getElementById('model-menu');
 		const sendButton = document.getElementById('send');
 		const status = document.getElementById('status');
 		const conversationSummary = document.getElementById('conversation-summary');
@@ -193,11 +222,89 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const toggleHistoryButton = document.getElementById('toggle-history');
 		const historyPanel = document.getElementById('history-panel');
 		const historyList = document.getElementById('history-list');
-		const historyCount = document.getElementById('history-count');
 		let assistantContent;
 		let assistantText = '';
 		let busy = false;
 		let currentConversationId;
+		let editMessageIndex;
+		let availableModels = [];
+		let selectedModelId = '';
+
+		function setModelMenuVisible(visible, focusSelected = false) {
+			if (modelTrigger.disabled) visible = false;
+			modelPicker.classList.toggle('open', visible);
+			modelTrigger.setAttribute('aria-expanded', String(visible));
+			if (visible && focusSelected) {
+				(modelMenu.querySelector('[aria-selected="true"]') ?? modelMenu.querySelector('.model-option'))?.focus();
+			}
+		}
+
+		function selectModel(modelId, notify) {
+			const model = availableModels.find(candidate => candidate.id === modelId);
+			if (!model) return;
+			selectedModelId = model.id;
+			modelTriggerLabel.textContent = model.name;
+			modelTrigger.title = model.providerName + ' · ' + model.name;
+			for (const option of modelMenu.querySelectorAll('.model-option')) {
+				option.setAttribute('aria-selected', String(option.dataset.modelId === selectedModelId));
+			}
+			setModelMenuVisible(false);
+			if (notify) vscode.postMessage({ type: 'selectModel', modelId: selectedModelId });
+		}
+
+		function renderModels(models, preferredModelId) {
+			availableModels = models;
+			modelMenu.replaceChildren();
+			const modelsByProvider = new Map();
+			for (const model of models) {
+				const providerModels = modelsByProvider.get(model.providerName) ?? [];
+				providerModels.push(model);
+				modelsByProvider.set(model.providerName, providerModels);
+			}
+			for (const [providerName, providerModels] of modelsByProvider) {
+				const provider = document.createElement('div');
+				provider.className = 'model-provider';
+				provider.textContent = providerName;
+				modelMenu.appendChild(provider);
+				for (const model of providerModels) {
+					const option = document.createElement('button');
+					option.className = 'model-option';
+					option.type = 'button';
+					option.dataset.modelId = model.id;
+					option.setAttribute('role', 'option');
+					option.innerHTML = '<span class="codicon codicon-check model-option-check" aria-hidden="true"></span>';
+					const text = document.createElement('span');
+					text.className = 'model-option-text';
+					const name = document.createElement('span');
+					name.className = 'model-option-name';
+					name.textContent = model.name;
+					text.appendChild(name);
+					if (model.family && model.family !== model.name) {
+						const family = document.createElement('span');
+						family.className = 'model-option-family';
+						family.textContent = model.family;
+						text.appendChild(family);
+					}
+					option.appendChild(text);
+					option.addEventListener('click', () => selectModel(model.id, true));
+					modelMenu.appendChild(option);
+				}
+			}
+			if (models.length === 0) {
+				const emptyModels = document.createElement('div');
+				emptyModels.className = 'model-menu-empty';
+				emptyModels.textContent = 'No models available';
+				modelMenu.appendChild(emptyModels);
+				selectedModelId = '';
+				modelTriggerLabel.textContent = 'No models available';
+				modelTrigger.title = 'No language models are available';
+				modelTrigger.disabled = true;
+				return;
+			}
+			const nextModelId = models.some(model => model.id === preferredModelId) ? preferredModelId : models[0].id;
+			selectModel(nextModelId, false);
+			modelTrigger.disabled = busy;
+		}
 
 		function setHistoryVisible(visible) {
 			workspace.classList.toggle('history-visible', visible);
@@ -225,15 +332,54 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			messages.scrollTop = messages.scrollHeight;
 		}
 
-		function appendMessage(role, text, loading = false, follow = true) {
+		function appendMessage(role, text, loading = false, follow = true, messageIndex) {
 			empty.hidden = true;
 			const item = document.createElement('article');
 			item.className = 'message ' + role;
+			if (loading) item.classList.add('pending');
+			const body = document.createElement('div');
+			body.className = 'message-body';
 			const content = document.createElement('div');
 			content.className = 'message-content';
+			content.dataset.messageText = text;
 			renderMarkdown(content, text);
 			if (loading) content.classList.add('loading');
-			item.appendChild(content);
+			const actions = document.createElement('div');
+			actions.className = 'message-actions';
+			const copyButton = document.createElement('button');
+			copyButton.className = 'message-action';
+			copyButton.innerHTML = '<span class="codicon codicon-copy" aria-hidden="true"></span>';
+			copyButton.title = 'Copy message';
+			copyButton.setAttribute('aria-label', 'Copy message');
+			copyButton.addEventListener('click', async () => {
+				await navigator.clipboard.writeText(content.dataset.messageText ?? '');
+				copyButton.firstElementChild.className = 'codicon codicon-check';
+				copyButton.title = 'Copied';
+				copyButton.setAttribute('aria-label', 'Copied');
+				setTimeout(() => {
+					copyButton.firstElementChild.className = 'codicon codicon-copy';
+					copyButton.title = 'Copy message';
+					copyButton.setAttribute('aria-label', 'Copy message');
+				}, 1200);
+			});
+			if (role === 'user' && messageIndex !== undefined) {
+				const editButton = document.createElement('button');
+				editButton.className = 'message-action edit-message';
+				editButton.innerHTML = '<span class="codicon codicon-edit" aria-hidden="true"></span>';
+				editButton.title = 'Edit message';
+				editButton.setAttribute('aria-label', 'Edit message');
+				editButton.addEventListener('click', () => {
+					if (busy) return;
+					editMessageIndex = messageIndex;
+					input.textContent = content.dataset.messageText ?? '';
+					status.textContent = 'Editing message';
+					input.focus();
+				});
+				actions.appendChild(editButton);
+			}
+			actions.appendChild(copyButton);
+			body.append(content, actions);
+			item.appendChild(body);
 			messages.appendChild(item);
 			if (follow) scrollToBottom();
 			return content;
@@ -244,8 +390,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			messages.replaceChildren(empty);
 			empty.hidden = storedMessages.length > 0;
 
-			for (const storedMessage of storedMessages) {
-				appendMessage(storedMessage.role, storedMessage.content, false, false);
+			for (const [messageIndex, storedMessage] of storedMessages.entries()) {
+				appendMessage(storedMessage.role, storedMessage.content, false, false, messageIndex);
 			}
 			if (preserveScroll) {
 				messages.scrollTop = Math.max(0, messages.scrollHeight - messages.clientHeight - distanceFromBottom);
@@ -256,7 +402,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 
 		function renderConversations(conversations) {
 			historyList.replaceChildren();
-			historyCount.textContent = conversations.length + (conversations.length === 1 ? ' chat' : ' chats');
 			if (conversations.length === 0) {
 				const emptyItem = document.createElement('li');
 				emptyItem.className = 'history-empty';
@@ -319,8 +464,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 
 		function setBusy(value) {
 			busy = value;
+			for (const editButton of document.querySelectorAll('.edit-message')) editButton.disabled = value;
 			input.setAttribute('contenteditable', value ? 'false' : 'plaintext-only');
-			modelSelect.disabled = value || !modelSelect.value;
+			modelTrigger.disabled = value || !selectedModelId;
+			if (value) setModelMenuVisible(false);
 			sendButton.title = value ? 'Stop generating' : 'Send';
 			sendButton.setAttribute('aria-label', value ? 'Stop generating' : 'Send');
 			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-debug-stop' : 'codicon-send');
@@ -334,17 +481,41 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			}
 			const text = input.textContent.trim();
 			if (!text) return;
+			if (editMessageIndex !== undefined) {
+				for (const message of Array.from(messages.querySelectorAll('.message')).slice(editMessageIndex)) message.remove();
+			}
 			appendMessage('user', text);
 			assistantContent = appendMessage('assistant', '', true);
 			assistantText = '';
 			input.replaceChildren();
 			setBusy(true);
 			status.textContent = 'Connecting to model...';
-			vscode.postMessage({ type: 'send', text, modelId: modelSelect.value });
+			vscode.postMessage({ type: 'send', text, modelId: selectedModelId, editMessageIndex });
+			editMessageIndex = undefined;
 		}
 
 		sendButton.addEventListener('click', send);
-		modelSelect.addEventListener('change', () => vscode.postMessage({ type: 'selectModel', modelId: modelSelect.value }));
+		modelTrigger.addEventListener('click', () => setModelMenuVisible(!modelPicker.classList.contains('open'), true));
+		modelPicker.addEventListener('keydown', event => {
+			if (event.key === 'Escape') {
+				setModelMenuVisible(false);
+				modelTrigger.focus();
+				return;
+			}
+			if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+			event.preventDefault();
+			if (!modelPicker.classList.contains('open')) {
+				setModelMenuVisible(true, true);
+				return;
+			}
+			const options = Array.from(modelMenu.querySelectorAll('.model-option'));
+			if (options.length === 0) return;
+			const currentIndex = options.indexOf(document.activeElement);
+			let nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : currentIndex;
+			if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % options.length;
+			if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + options.length) % options.length;
+			options[nextIndex].focus();
+		});
 		toggleHistoryButton.addEventListener('click', () => {
 			setHistoryVisible(!workspace.classList.contains('history-visible'));
 		});
@@ -353,9 +524,13 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (!historyPanel.contains(event.target) && !toggleHistoryButton.contains(event.target)) {
 				setHistoryVisible(false);
 			}
+			if (!modelPicker.contains(event.target)) setModelMenuVisible(false);
 		});
 		document.addEventListener('keydown', event => {
-			if (event.key === 'Escape') setHistoryVisible(false);
+			if (event.key === 'Escape') {
+				setHistoryVisible(false);
+				setModelMenuVisible(false);
+			}
 		});
 		document.getElementById('new-conversation').addEventListener('click', () => vscode.postMessage({ type: 'newConversation' }));
 		document.getElementById('open-prompt-settings').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
@@ -380,6 +555,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				conversationSummary.textContent = message.currentSummary;
 				conversationSummary.title = message.currentSummary;
 				status.textContent = '';
+				editMessageIndex = undefined;
 				setBusy(false);
 			}
 			if (message.type === 'summaryChunk' && message.conversationId === currentConversationId) {
@@ -387,43 +563,20 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				conversationSummary.title = message.summary;
 			}
 			if (message.type === 'models') {
-				const selectedModelId = modelSelect.value || message.selectedModelId;
-				modelSelect.replaceChildren();
-				const modelsByProvider = new Map();
-				for (const model of message.models) {
-					const providerModels = modelsByProvider.get(model.providerName) ?? [];
-					providerModels.push(model);
-					modelsByProvider.set(model.providerName, providerModels);
-				}
-				for (const [providerName, models] of modelsByProvider) {
-					const group = document.createElement('optgroup');
-					group.label = providerName;
-					for (const model of models) {
-						const option = document.createElement('option');
-						option.value = model.id;
-						option.textContent = model.name;
-						option.title = model.family;
-						group.appendChild(option);
-					}
-					modelSelect.appendChild(group);
-				}
+				const preferredModelId = selectedModelId || message.selectedModelId;
+				renderModels(message.models, preferredModelId);
 				if (message.models.length === 0) {
-					const option = document.createElement('option');
-					option.textContent = 'No models available';
-					modelSelect.appendChild(option);
 					status.textContent = 'No language models are available';
 				}
-				if (selectedModelId && Array.from(modelSelect.options).some(option => option.value === selectedModelId)) {
-					modelSelect.value = selectedModelId;
-				}
-				modelSelect.disabled = message.models.length === 0;
 			}
 			if (message.type === 'modelsError') {
-				modelSelect.replaceChildren();
-				const option = document.createElement('option');
-				option.textContent = 'Failed to load models';
-				modelSelect.appendChild(option);
-				modelSelect.disabled = true;
+				availableModels = [];
+				selectedModelId = '';
+				modelMenu.replaceChildren();
+				modelTriggerLabel.textContent = 'Failed to load models';
+				modelTrigger.title = 'Failed to load models';
+				modelTrigger.disabled = true;
+				setModelMenuVisible(false);
 				status.textContent = 'Failed to load models: ' + message.message;
 			}
 			if (message.type === 'started') status.textContent = 'Using ' + message.model;
@@ -431,11 +584,13 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				const follow = isNearBottom();
 				assistantContent.classList.remove('loading');
 				assistantText += message.text;
+				assistantContent.dataset.messageText = assistantText;
 				renderMarkdown(assistantContent, assistantText);
 				if (follow) scrollToBottom();
 			}
 			if (message.type === 'completed') {
 				assistantContent.classList.remove('loading');
+				assistantContent.closest('.message').classList.remove('pending');
 				status.textContent = '';
 				setBusy(false);
 			}
@@ -446,7 +601,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			}
 			if (message.type === 'error') {
 				assistantContent.classList.remove('loading');
-				assistantContent.textContent = 'Request failed: ' + message.message;
+				const errorText = 'Request failed: ' + message.message;
+				assistantContent.dataset.messageText = errorText;
+				assistantContent.textContent = errorText;
 				status.textContent = '';
 				setBusy(false);
 			}

@@ -15,7 +15,7 @@ import { getWebviewHtml } from './webview';
 
 type WebviewMessage =
 	| { type: 'ready' }
-	| { type: 'send'; text: string; modelId: string }
+	| { type: 'send'; text: string; modelId: string; editMessageIndex?: number }
 	| { type: 'selectModel'; modelId: string }
 	| { type: 'newConversation' }
 	| { type: 'selectConversation'; conversationId: string }
@@ -151,7 +151,7 @@ class TemporaryChatPanel {
 				await Promise.all([this.loadModels(), this.renderConversations()]);
 				break;
 			case 'send':
-				await this.send(message.text, message.modelId);
+				await this.send(message.text, message.modelId, message.editMessageIndex);
 				break;
 			case 'selectModel':
 				await this.context.globalState.update(selectedModelStorageKey, message.modelId);
@@ -299,19 +299,32 @@ class TemporaryChatPanel {
 	}
 
 	private postModels(models: readonly vscode.LanguageModelChat[], providerNames?: ReadonlyMap<string, string>) {
+		const visibleModels = new Map<string, {
+			id: string;
+			name: string;
+			providerName: string;
+			family: string;
+		}>();
+		for (const model of models) {
+			const providerName = providerNames?.get(model.id) ?? model.vendor;
+			const key = `${providerName}\u0000${model.name}`;
+			if (!visibleModels.has(key)) {
+				visibleModels.set(key, {
+					id: model.id,
+					name: model.name,
+					providerName,
+					family: model.family,
+				});
+			}
+		}
 		return this.panel.webview.postMessage({
 			type: 'models',
 			selectedModelId: this.context.globalState.get<string>(selectedModelStorageKey),
-			models: models.map(model => ({
-				id: model.id,
-				name: model.name,
-				providerName: providerNames?.get(model.id) ?? model.vendor,
-				family: model.family,
-			})),
+			models: [...visibleModels.values()],
 		});
 	}
 
-	private async send(text: string, modelId: string) {
+	private async send(text: string, modelId: string, editMessageIndex?: number) {
 		const userText = text.trim();
 		if (!userText) {
 			return;
@@ -321,10 +334,26 @@ class TemporaryChatPanel {
 			return;
 		}
 
-		const cancellation = new vscode.CancellationTokenSource();
-		this.cancellation = cancellation;
 		const conversationId = this.currentConversationId;
 		const conversation = this.getCurrentConversation();
+		if (editMessageIndex !== undefined
+			&& (!conversation || !Number.isInteger(editMessageIndex) || conversation.messages[editMessageIndex]?.role !== 'user')) {
+			await this.panel.webview.postMessage({ type: 'error', message: 'The message being edited is no longer available.' });
+			return;
+		}
+
+		const cancellation = new vscode.CancellationTokenSource();
+		this.cancellation = cancellation;
+		if (conversation && editMessageIndex !== undefined) {
+			conversation.messages.splice(editMessageIndex);
+			conversation.updatedAt = Date.now();
+			if (editMessageIndex === 0) {
+				conversation.summary = createSummary(userText);
+				this.panel.title = createTabTitle(userText);
+			}
+			await this.persistConversations();
+			await this.refreshConversationHistory();
+		}
 		if (!conversation) {
 			this.panel.title = createTabTitle(userText);
 		}
@@ -344,9 +373,9 @@ class TemporaryChatPanel {
 				throw new Error('No language model is available. Configure or sign in to a model provider in VS Code.');
 			}
 
-			const summaryPromise = conversation
-				? undefined
-				: this.generateSummary(model, userText, conversationId);
+			const summaryPromise = !conversation || editMessageIndex === 0
+				? this.generateSummary(model, userText, conversationId)
+				: undefined;
 			await this.panel.webview.postMessage({ type: 'started', model: model.name });
 			const response = await model.sendRequest(requestMessages, {}, cancellation.token);
 			let answer = '';
