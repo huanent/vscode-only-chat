@@ -90,9 +90,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.user .message-body { max-width: 82%; align-items: flex-end; }
 		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border: 1px solid var(--vscode-chat-requestBorder, var(--vscode-contrastBorder, var(--vscode-panel-border))); border-radius: 4px; background: var(--vscode-chat-requestBackground, var(--vscode-input-background, rgba(127, 127, 127, .12))); }
 		.user .message-content { max-width: 100%; }
-		.message-actions { height: 26px; display: flex; align-items: center; padding-top: 2px; opacity: 0; pointer-events: none; }
+		.message-actions { height: 26px; display: flex; align-items: center; gap: 4px; padding-top: 2px; opacity: 0; pointer-events: none; }
 		.message:hover .message-actions, .message:focus-within .message-actions { opacity: 1; pointer-events: auto; }
 		.message.pending .message-actions { visibility: hidden; pointer-events: none; }
+		.message-model { max-width: 220px; overflow: hidden; color: var(--vscode-descriptionForeground); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 		.message-action { width: 24px; height: 24px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.message-action:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.message-action .codicon { font-size: 14px; }
@@ -366,6 +367,11 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		function updateActiveMessageAnchor() {
 			const messageItems = Array.from(messages.querySelectorAll('.message'));
 			if (messageItems.length === 0) return;
+			if (messages.scrollTop <= 1) {
+				anchoredMessage = undefined;
+				setActiveMessageAnchor(messageItems[0]);
+				return;
+			}
 			if (anchoredMessage?.isConnected) {
 				setActiveMessageAnchor(anchoredMessage);
 				return;
@@ -394,6 +400,19 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			setActiveMessageAnchor(messageItem);
 		}
 
+		function setMessageModel(messageContent, modelName) {
+			const actions = messageContent.closest('.message')?.querySelector('.message-actions');
+			if (!actions) return;
+			let model = actions.querySelector('.message-model');
+			if (!model) {
+				model = document.createElement('span');
+				model.className = 'message-model';
+				actions.appendChild(model);
+			}
+			model.textContent = modelName;
+			model.title = modelName;
+		}
+
 		function refreshMessageNavigation() {
 			messageNavigation.replaceChildren();
 			const messageItems = Array.from(messages.querySelectorAll('.message'));
@@ -416,7 +435,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			updateActiveMessageAnchor();
 		}
 
-		function appendMessage(role, text, loading = false, follow = true, messageIndex) {
+		function appendMessage(role, text, loading = false, follow = true, messageIndex, modelName) {
 			empty.hidden = true;
 			const item = document.createElement('article');
 			item.className = 'message ' + role;
@@ -465,6 +484,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			body.append(content, actions);
 			item.appendChild(body);
 			messages.appendChild(item);
+			if (role === 'assistant' && modelName) setMessageModel(content, modelName);
 			if (follow) scrollToBottom();
 			refreshMessageNavigation();
 			return content;
@@ -480,7 +500,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			empty.hidden = storedMessages.length > 0;
 
 			for (const [messageIndex, storedMessage] of storedMessages.entries()) {
-				appendMessage(storedMessage.role, storedMessage.content, false, false, messageIndex);
+				appendMessage(storedMessage.role, storedMessage.content, false, false, messageIndex, storedMessage.model);
 			}
 			refreshMessageNavigation();
 			if (preserveScroll) {
@@ -679,6 +699,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			}
 			if (message.type === 'started') {
 				status.textContent = 'Using ' + message.model;
+				setMessageModel(assistantContent, message.model);
 				anchorMessage(assistantContent.closest('.message'));
 			}
 			if (message.type === 'chunk') {

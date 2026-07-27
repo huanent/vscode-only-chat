@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 export type StoredMessage = {
 	role: 'user' | 'assistant';
 	content: string;
+	model?: string;
 };
 
 export type StoredConversation = {

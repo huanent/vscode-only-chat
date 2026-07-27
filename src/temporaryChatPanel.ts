@@ -392,7 +392,7 @@ class TemporaryChatPanel {
 			};
 			updatedConversation.messages.push(
 				{ role: 'user', content: userText },
-				{ role: 'assistant', content: answer },
+				{ role: 'assistant', content: answer, model: model.name },
 			);
 			updatedConversation.updatedAt = Date.now();
 			if (!conversation) {
