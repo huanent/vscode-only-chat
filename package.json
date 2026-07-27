@@ -1,0 +1,63 @@
+{
+  "name": "temporary-chat",
+  "displayName": "Temporary Chat",
+  "description": "Open a disposable AI chat panel with a customizable prompt.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "AI"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "temporaryChat.open",
+        "title": "打开临时 AI 对话",
+        "category": "Temporary Chat"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "temporaryChat.open",
+        "key": "ctrl+alt+i",
+        "mac": "cmd+alt+i"
+      }
+    ],
+    "configuration": {
+      "title": "Temporary Chat",
+      "properties": {
+        "temporaryChat.prompt": {
+          "type": "string",
+          "default": "请使用清晰、准确、简洁的中文回答。",
+          "markdownDescription": "新建临时对话时使用的默认提示词。也可在聊天面板中临时修改。",
+          "scope": "window"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.125.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "typescript-eslint": "^8.61.1",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  }
+}
