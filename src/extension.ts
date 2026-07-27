@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 class TemporaryChatPanel {
 	private static current: TemporaryChatPanel | undefined;
@@ -54,7 +54,7 @@ class TemporaryChatPanel {
 
 		const panel = vscode.window.createWebviewPanel(
 			'temporaryChat',
-			'临时 AI 对话',
+			'New conversation',
 			vscode.ViewColumn.Beside,
 			{
 				enableScripts: true,
@@ -62,6 +62,7 @@ class TemporaryChatPanel {
 				localResourceRoots: [context.extensionUri],
 			},
 		);
+		panel.iconPath = new vscode.ThemeIcon('comment-discussion');
 
 		TemporaryChatPanel.current = new TemporaryChatPanel(panel, context);
 	}
@@ -79,7 +80,7 @@ class TemporaryChatPanel {
 		this.currentConversationId = context.globalState.get<string>(currentConversationStorageKey)
 			?? this.conversations[0]?.id
 			?? randomUUID();
-		this.panel.webview.html = getWebviewHtml(this.panel.webview);
+		this.panel.webview.html = getWebviewHtml(this.panel.webview, context.extensionUri);
 
 		this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
 		this.panel.webview.onDidReceiveMessage(
@@ -121,6 +122,7 @@ class TemporaryChatPanel {
 
 	private async loadConversations() {
 		const current = this.getCurrentConversation();
+		this.panel.title = current?.summary ?? 'New conversation';
 		await this.panel.webview.postMessage({
 			type: 'conversations',
 			currentConversationId: current?.id ?? this.currentConversationId,
@@ -161,8 +163,8 @@ class TemporaryChatPanel {
 		if (!conversation) {
 			return;
 		}
-		const answer = await vscode.window.showWarningMessage(`删除对话“${conversation.summary}”？`, { modal: true }, '删除');
-		if (answer !== '删除') {
+		const answer = await vscode.window.showWarningMessage(`Delete conversation "${conversation.summary}"?`, { modal: true }, 'Delete');
+		if (answer !== 'Delete') {
 			return;
 		}
 		if (this.currentConversationId === conversationId) {
@@ -210,7 +212,7 @@ class TemporaryChatPanel {
 			return;
 		}
 		if (this.cancellation) {
-			await this.panel.webview.postMessage({ type: 'error', message: '上一条请求仍在结束，请稍后重试。' });
+			await this.panel.webview.postMessage({ type: 'error', message: 'The previous request is still stopping. Please try again shortly.' });
 			return;
 		}
 
@@ -218,6 +220,9 @@ class TemporaryChatPanel {
 		this.cancellation = cancellation;
 		const conversationId = this.currentConversationId;
 		const conversation = this.getCurrentConversation();
+		if (!conversation) {
+			this.panel.title = createSummary(userText);
+		}
 		const prompt = vscode.workspace.getConfiguration('temporaryChat').get<string>('prompt', '').trim();
 		const requestMessages = [
 			...(prompt ? [vscode.LanguageModelChatMessage.User(prompt, 'instructions')] : []),
@@ -231,7 +236,7 @@ class TemporaryChatPanel {
 			const models = await vscode.lm.selectChatModels();
 			const model = models.find(candidate => candidate.id === modelId) ?? models[0];
 			if (!model) {
-				throw new Error('未找到可用的语言模型。请在 VS Code 中配置或登录模型 Provider。');
+				throw new Error('No language model is available. Configure or sign in to a model provider in VS Code.');
 			}
 
 			await this.panel.webview.postMessage({ type: 'started', model: model.name });
@@ -287,112 +292,138 @@ class TemporaryChatPanel {
 	}
 }
 
-function getWebviewHtml(webview: vscode.Webview) {
+function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri) {
 	const nonce = getNonce();
+	const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css'));
+	const markdownItUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'markdown-it', 'dist', 'markdown-it.min.js'));
+	const domPurifyUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'node_modules', 'dompurify', 'dist', 'purify.min.js'));
 
 	return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
-	<title>临时 AI 对话</title>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src ${webview.cspSource} 'nonce-${nonce}';">
+	<title>New conversation</title>
+	<link rel="stylesheet" href="${codiconsUri}">
 	<style nonce="${nonce}">
 		:root { color-scheme: light dark; }
 		* { box-sizing: border-box; }
-		body { margin: 0; padding:0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: 13px; }
-		.app { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
-		header { display: grid; grid-template-columns: auto minmax(0, 1fr) 30px; align-items: center; gap: 6px; min-height: 40px; padding: 5px 4px; border-bottom: 1px solid var(--vscode-panel-border); }
-		.header-actions { display: flex; gap: 2px; }
-		.conversation-summary { overflow: hidden; color: var(--vscode-foreground); font-size: 13px; font-weight: 600; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-		select { min-width: 0; max-width: min(58vw, 320px); height: 26px; padding: 0 24px 0 7px; border: 0; color: var(--vscode-descriptionForeground); background: transparent; font: inherit; font-size: 12px; }
-		select:hover { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
-		select:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
-		button { min-height: 28px; padding: 0 12px; border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); font: inherit; cursor: pointer; }
-		button:hover { background: var(--vscode-button-hoverBackground); }
-		button.secondary { border-color: transparent; color: var(--vscode-descriptionForeground); background: transparent; }
-		button.secondary:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
-		button:disabled { opacity: .55; cursor: default; }
-		.icon-button { width: 30px; padding: 0; font-size: 17px; }
-		.history-backdrop { position: fixed; z-index: 10; inset: 0; display: grid; visibility: hidden; place-items: center; padding: 16px; background: rgba(0, 0, 0, .42); opacity: 0; transition: opacity 120ms ease, visibility 120ms ease; }
-		.history-backdrop.open { visibility: visible; opacity: 1; }
-		.history-panel { width: min(92vw, 520px); max-height: min(76vh, 560px); display: grid; grid-template-rows: auto minmax(120px, 1fr); overflow: hidden; border: 1px solid var(--vscode-panel-border); border-radius: 7px; background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background)); box-shadow: 0 16px 44px rgba(0, 0, 0, .34); transform: translateY(8px) scale(.98); transition: transform 120ms ease; }
-		.history-backdrop.open .history-panel { transform: translateY(0) scale(1); }
-		.history-heading { display: flex; align-items: center; min-height: 42px; padding: 6px 8px 6px 12px; border-bottom: 1px solid var(--vscode-panel-border); }
-		.history-heading strong { flex: 1; font-size: 13px; }
-		.history-list { overflow-y: auto; margin: 0; padding: 6px; list-style: none; }
-		.history-empty { padding: 18px 10px; color: var(--vscode-descriptionForeground); line-height: 1.5; text-align: center; }
-		.history-row { display: grid; grid-template-columns: minmax(0, 1fr) 30px; gap: 3px; margin-bottom: 2px; border-radius: 4px; }
-		.history-row.active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
-		.history-item { width: 100%; min-height: 38px; padding: 7px 9px; border: 0; color: inherit; background: transparent; text-align: left; overflow: hidden; }
-		.history-item-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-		.history-item-time { display: block; margin-top: 2px; color: var(--vscode-descriptionForeground); font-size: 10px; }
-		.history-row:not(.active):hover { background: var(--vscode-list-hoverBackground); }
-		.delete-history { align-self: center; color: var(--vscode-descriptionForeground); background: transparent; }
-		.delete-history:hover { color: var(--vscode-errorForeground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
-		.messages { overflow-y: auto; padding: 12px 4px; }
-		.empty { height: 100%; display: grid; place-content: center; padding: 24px; text-align: center; color: var(--vscode-descriptionForeground); line-height: 1.7; }
-		.message { padding: 10px 8px 12px; border-bottom: 1px solid color-mix(in srgb, var(--vscode-panel-border) 65%, transparent); }
-		.message:last-child { border-bottom: 0; }
-		.message-label { margin-bottom: 7px; color: var(--vscode-descriptionForeground); font-size: 11px; font-weight: 600; }
-		.message-content { line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-		.user { margin: 2px 0 8px; border-radius: 6px; background: var(--vscode-textBlockQuote-background); }
-		.user .message-content { color: var(--vscode-foreground); }
-		.composer { padding: 8px 4px 4px; border-top: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
-		textarea { width: 100%; resize: vertical; border: 0; outline: none; color: var(--vscode-input-foreground); background: transparent; font: inherit; line-height: 1.5; }
-		.input-shell { overflow: hidden; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 6px; background: var(--vscode-input-background); }
+		body { margin: 0; padding:0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
+		button, select { font: inherit; }
+		button { cursor: pointer; }
+		button:focus-visible, select:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+		button:disabled { cursor: default; opacity: .5; }
+		.app { height: 100vh; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
+		header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
+		.conversation-summary { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+		.header-actions { display: flex; align-items: center; gap: 2px; }
+		.icon-button { width: 28px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
+		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
+		.icon-button .codicon { font-size: 16px; }
+		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 220px; }
+		.chat-area { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+		.messages { overflow-y: auto; padding: 18px max(16px, calc((100% - 760px) / 2)) 28px; scroll-padding-bottom: 24px; }
+		.empty { height: 100%; display: grid; place-content: center; color: var(--vscode-descriptionForeground); text-align: center; }
+		.empty[hidden] { display: none; }
+		.empty-mark { width: 36px; height: 36px; display: grid; place-items: center; margin: 0 auto 10px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 6px; color: var(--vscode-icon-foreground); background: var(--vscode-editorWidget-background); }
+		.empty-mark .codicon { font-size: 19px; }
+		.message { display: flex; padding: 12px 0; }
+		.message-content { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
+		.message-content > :first-child { margin-top: 0; }
+		.message-content > :last-child { margin-bottom: 0; }
+		.message-content p, .message-content ul, .message-content ol, .message-content blockquote, .message-content pre { margin: 0 0 10px; }
+		.message-content ul, .message-content ol { padding-left: 22px; }
+		.message-content blockquote { padding-left: 10px; border-left: 2px solid var(--vscode-textBlockQuote-border); color: var(--vscode-descriptionForeground); }
+		.message-content code { padding: 1px 3px; border-radius: 3px; color: var(--vscode-textPreformat-foreground); background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); }
+		.message-content pre { overflow-x: auto; padding: 10px; background: var(--vscode-textCodeBlock-background); }
+		.message-content pre code { padding: 0; background: transparent; }
+		.message-content a { color: var(--vscode-textLink-foreground); }
+		.message-content table { display: block; width: max-content; max-width: 100%; overflow-x: auto; margin: 0 0 10px; border-collapse: collapse; border-spacing: 0; }
+		.message-content th, .message-content td { padding: 5px 8px; border: 1px solid var(--vscode-panel-border); text-align: left; }
+		.message-content th { background: var(--vscode-textBlockQuote-background); font-weight: 600; }
+		.assistant { justify-content: flex-start; }
+		.user { justify-content: flex-end; }
+		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border-radius: 4px; background: var(--vscode-textBlockQuote-background); }
+		.message-content.loading { width: 32px; height: 24px; display: flex; align-items: center; gap: 3px; }
+		.message-content.loading::before, .message-content.loading::after { width: 4px; height: 4px; border-radius: 50%; background: var(--vscode-descriptionForeground); content: ""; animation: loading-dot 900ms ease-in-out infinite; }
+		.message-content.loading::after { animation-delay: 300ms; }
+		.message-content.loading { background-image: radial-gradient(circle, var(--vscode-descriptionForeground) 2px, transparent 2.5px); background-position: center; background-repeat: no-repeat; }
+		@keyframes loading-dot { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+		.composer { padding: 10px max(16px, calc((100% - 760px) / 2)) 8px; background: var(--vscode-editor-background); }
+		.input-shell { overflow: hidden; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-editor-background); transition: border-color 80ms ease; }
 		.input-shell:focus-within { border-color: var(--vscode-focusBorder); }
-		#input { min-height: 72px; max-height: 220px; padding: 10px 10px 4px; }
-		.input-toolbar { display: flex; align-items: center; gap: 4px; min-height: 38px; padding: 4px 5px 5px; }
+		.message-input { width: 100%; min-height: 58px; max-height: 220px; overflow-y: auto; padding: 9px 10px 3px; color: var(--vscode-input-foreground); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
+		.message-input:empty::before { color: var(--vscode-input-placeholderForeground); content: attr(data-placeholder); pointer-events: none; }
+		.message-input[contenteditable="false"] { opacity: .6; }
+		.input-toolbar { min-height: 32px; display: flex; align-items: center; gap: 6px; padding: 2px 4px 4px 5px; }
 		.input-toolbar .spacer { flex: 1; }
-		#send { min-width: 64px; height: 30px; }
-		.status { min-height: 18px; padding: 4px 4px 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
-		@media (max-width: 420px) {
-			select { max-width: 56vw; }
-			#send { min-width: 56px; padding: 0 9px; }
-		}
+		select { min-width: 0; max-width: min(60vw, 300px); height: 26px; padding: 0 24px 0 6px; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
+		select:hover { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
+		.send-button { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
+		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
+		.send-button .codicon { font-size: 15px; }
+		.status { min-height: 15px; padding: 2px 1px 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
+		.history-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: 36px minmax(0, 1fr); overflow: hidden; border-left: 1px solid var(--vscode-panel-border); background: transparent; }
+		.history-heading { display: flex; align-items: center; padding: 0 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+		.history-heading strong { flex: 1; font-size: 12px; }
+		.history-list { overflow-y: auto; margin: 0; padding: 4px; background: transparent; list-style: none; }
+		.history-empty { padding: 20px 10px; color: var(--vscode-descriptionForeground); text-align: center; }
+		.history-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; border-radius: 3px; background: transparent; }
+		.history-row.active { color: var(--vscode-list-activeSelectionForeground); }
+		.history-item { min-width: 0; padding: 7px 8px; border: 0; color: inherit; background: transparent; text-align: left; }
+		.history-item-title, .history-item-time { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.history-item-time { margin-top: 2px; color: var(--vscode-descriptionForeground); font-size: 10px; }
+		.history-row.active .history-item-time { color: inherit; opacity: .8; }
+		.delete-history { opacity: 0; }
+		.history-row:hover .delete-history, .history-row:focus-within .delete-history { opacity: 1; }
+		.delete-history:hover { color: var(--vscode-errorForeground); }
+		@media (max-width: 620px) { .workspace { grid-template-columns: minmax(0, 1fr) 160px; } .messages { padding-inline: 12px; } .composer { padding: 8px; } select { max-width: 42vw; } }
 	</style>
 </head>
 <body>
 	<div class="app">
 		<header>
+			<div id="conversation-summary" class="conversation-summary" title="New conversation">New conversation</div>
 			<div class="header-actions">
-				<button id="open-history" class="secondary icon-button" title="打开对话历史" aria-label="打开对话历史">≡</button>
-				<button id="new-conversation" class="secondary icon-button" title="新建对话" aria-label="新建对话">+</button>
+				<button id="open-prompt-settings" class="icon-button" title="Prompt settings" aria-label="Open prompt settings"><span class="codicon codicon-settings-gear" aria-hidden="true"></span></button>
 			</div>
-			<div id="conversation-summary" class="conversation-summary" title="新对话">新对话</div>
-			<button id="open-prompt-settings" class="secondary icon-button" title="打开提示词设置" aria-label="打开提示词设置">⚙</button>
 		</header>
-		<main id="messages" class="messages">
-			<div id="empty" class="empty">开始一段 AI 对话<br>关闭面板后仍可继续</div>
-		</main>
-		<section class="composer">
-			<div class="input-shell">
-				<textarea id="input" aria-label="消息" placeholder="输入消息，Enter 发送，Shift+Enter 换行" autofocus></textarea>
-				<div class="input-toolbar">
-					<select id="model" aria-label="语言模型" title="选择语言模型" disabled>
-						<option value="">正在加载模型...</option>
-					</select>
-					<span class="spacer"></span>
-					<button id="send">发送</button>
+		<div class="workspace">
+			<div class="chat-area">
+				<main id="messages" class="messages">
+					<div id="empty" class="empty"><div class="empty-mark"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></div><span>New conversation</span></div>
+				</main>
+				<section class="composer">
+					<div class="input-shell">
+						<div id="input" class="message-input" role="textbox" aria-label="Message" aria-multiline="true" contenteditable="plaintext-only" data-placeholder="Type a message. Enter to send, Shift+Enter for a new line" autofocus></div>
+						<div class="input-toolbar">
+							<select id="model" aria-label="Language model" title="Select a language model" disabled>
+								<option value="">Loading models...</option>
+							</select>
+							<span class="spacer"></span>
+							<button id="send" class="send-button" title="Send" aria-label="Send"><span class="codicon codicon-send" aria-hidden="true"></span></button>
+						</div>
+					</div>
+					<div id="status" class="status" aria-live="polite"></div>
+				</section>
+			</div>
+			<aside class="history-panel" aria-label="Conversation history">
+				<div class="history-heading">
+					<strong>Conversation history</strong>
+					<button id="new-conversation" class="icon-button" title="New conversation" aria-label="New conversation"><span class="codicon codicon-add" aria-hidden="true"></span></button>
 				</div>
-			</div>
-			<div id="status" class="status" aria-live="polite"></div>
-		</section>
+				<ul id="history-list" class="history-list">
+					<li class="history-empty">No conversation history</li>
+				</ul>
+			</aside>
+		</div>
 	</div>
-	<div id="history-backdrop" class="history-backdrop" aria-hidden="true">
-		<aside class="history-panel" aria-label="对话历史">
-			<div class="history-heading">
-				<strong>对话历史</strong>
-				<button id="close-history" class="secondary icon-button" title="关闭对话历史" aria-label="关闭对话历史">×</button>
-			</div>
-			<ul id="history-list" class="history-list">
-				<li class="history-empty">暂无历史对话</li>
-			</ul>
-		</aside>
-	</div>
+	<script nonce="${nonce}" src="${markdownItUri}"></script>
+	<script nonce="${nonce}" src="${domPurifyUri}"></script>
 	<script nonce="${nonce}">
 		const vscode = acquireVsCodeApi();
+		const markdown = window.markdownit({ breaks: true, html: false, linkify: true });
 		const messages = document.getElementById('messages');
 		const empty = document.getElementById('empty');
 		const input = document.getElementById('input');
@@ -400,44 +431,50 @@ function getWebviewHtml(webview: vscode.Webview) {
 		const sendButton = document.getElementById('send');
 		const status = document.getElementById('status');
 		const conversationSummary = document.getElementById('conversation-summary');
-		const historyBackdrop = document.getElementById('history-backdrop');
 		const historyList = document.getElementById('history-list');
 		let assistantContent;
+		let assistantText = '';
 		let busy = false;
 		let currentConversationId;
 
-		function appendMessage(role, text) {
+		function renderMarkdown(element, text) {
+			element.innerHTML = DOMPurify.sanitize(markdown.render(text));
+		}
+
+		function isNearBottom() {
+			return messages.scrollHeight - messages.scrollTop - messages.clientHeight < 48;
+		}
+
+		function scrollToBottom() {
+			messages.scrollTop = messages.scrollHeight;
+		}
+
+		function appendMessage(role, text, loading = false, follow = true) {
 			empty.hidden = true;
 			const item = document.createElement('article');
 			item.className = 'message ' + role;
-			const label = document.createElement('div');
-			label.className = 'message-label';
-			label.textContent = role === 'user' ? '你' : 'AI';
 			const content = document.createElement('div');
 			content.className = 'message-content';
-			content.textContent = text;
-			item.append(label, content);
+			renderMarkdown(content, text);
+			if (loading) content.classList.add('loading');
+			item.appendChild(content);
 			messages.appendChild(item);
-			messages.scrollTop = messages.scrollHeight;
+			if (follow) scrollToBottom();
 			return content;
 		}
 
-		function openHistory() {
-			historyBackdrop.classList.add('open');
-			historyBackdrop.setAttribute('aria-hidden', 'false');
-		}
-
-		function closeHistory() {
-			historyBackdrop.classList.remove('open');
-			historyBackdrop.setAttribute('aria-hidden', 'true');
-		}
-
-		function restoreConversation(storedMessages) {
+		function restoreConversation(storedMessages, preserveScroll) {
+			const distanceFromBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
 			messages.replaceChildren(empty);
 			empty.hidden = storedMessages.length > 0;
 
 			for (const storedMessage of storedMessages) {
-				appendMessage(storedMessage.role, storedMessage.content);
+				appendMessage(storedMessage.role, storedMessage.content, false, false);
+			}
+			if (preserveScroll) {
+				messages.scrollTop = Math.max(0, messages.scrollHeight - messages.clientHeight - distanceFromBottom);
+			} else {
+				scrollToBottom();
 			}
 		}
 
@@ -446,7 +483,7 @@ function getWebviewHtml(webview: vscode.Webview) {
 			if (conversations.length === 0) {
 				const emptyItem = document.createElement('li');
 				emptyItem.className = 'history-empty';
-				emptyItem.textContent = '暂无历史对话';
+				emptyItem.textContent = 'No conversation history';
 				historyList.appendChild(emptyItem);
 				return;
 			}
@@ -465,13 +502,12 @@ function getWebviewHtml(webview: vscode.Webview) {
 				openButton.append(title, time);
 				openButton.addEventListener('click', () => {
 					vscode.postMessage({ type: 'selectConversation', conversationId: conversation.id });
-					closeHistory();
 				});
 				const deleteButton = document.createElement('button');
-				deleteButton.className = 'secondary icon-button delete-history';
-				deleteButton.textContent = '×';
-				deleteButton.title = '删除对话';
-				deleteButton.setAttribute('aria-label', '删除对话');
+				deleteButton.className = 'icon-button delete-history';
+				deleteButton.innerHTML = '<span class="codicon codicon-trash" aria-hidden="true"></span>';
+				deleteButton.title = 'Delete conversation';
+				deleteButton.setAttribute('aria-label', 'Delete conversation');
 				deleteButton.addEventListener('click', event => {
 					event.stopPropagation();
 					vscode.postMessage({ type: 'deleteConversation', conversationId: conversation.id });
@@ -483,9 +519,11 @@ function getWebviewHtml(webview: vscode.Webview) {
 
 		function setBusy(value) {
 			busy = value;
-			input.disabled = value;
+			input.setAttribute('contenteditable', value ? 'false' : 'plaintext-only');
 			modelSelect.disabled = value || !modelSelect.value;
-			sendButton.textContent = value ? '停止' : '发送';
+			sendButton.title = value ? 'Stop generating' : 'Send';
+			sendButton.setAttribute('aria-label', value ? 'Stop generating' : 'Send');
+			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-debug-stop' : 'codicon-send');
 			input.focus();
 		}
 
@@ -494,31 +532,28 @@ function getWebviewHtml(webview: vscode.Webview) {
 				vscode.postMessage({ type: 'cancel' });
 				return;
 			}
-			const text = input.value.trim();
+			const text = input.textContent.trim();
 			if (!text) return;
 			if (messages.children.length === 1 && !empty.hidden) {
-				conversationSummary.textContent = text.length > 42 ? text.slice(0, 42) + '…' : text;
+				const summary = text.replace(/\s+/g, ' ').trim();
+				conversationSummary.textContent = summary.length > 28 ? summary.slice(0, 28) + '…' : summary;
 				conversationSummary.title = text;
 			}
 			appendMessage('user', text);
-			assistantContent = appendMessage('assistant', '');
-			input.value = '';
+			assistantContent = appendMessage('assistant', '', true);
+			assistantText = '';
+			input.replaceChildren();
 			setBusy(true);
-			status.textContent = '正在连接模型...';
+			status.textContent = 'Connecting to model...';
 			vscode.postMessage({ type: 'send', text, modelId: modelSelect.value });
 		}
 
 		sendButton.addEventListener('click', send);
 		modelSelect.addEventListener('change', () => vscode.postMessage({ type: 'selectModel', modelId: modelSelect.value }));
-		document.getElementById('open-history').addEventListener('click', openHistory);
 		document.getElementById('new-conversation').addEventListener('click', () => vscode.postMessage({ type: 'newConversation' }));
-		document.getElementById('close-history').addEventListener('click', closeHistory);
 		document.getElementById('open-prompt-settings').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
-		historyBackdrop.addEventListener('click', event => {
-			if (event.target === historyBackdrop) closeHistory();
-		});
 		input.addEventListener('keydown', event => {
-			if (event.key === 'Enter' && !event.shiftKey) {
+			if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
 				event.preventDefault();
 				send();
 			}
@@ -528,12 +563,13 @@ function getWebviewHtml(webview: vscode.Webview) {
 		window.addEventListener('message', event => {
 			const message = event.data;
 			if (message.type === 'conversations') {
+				const preserveScroll = currentConversationId === message.currentConversationId;
 				currentConversationId = message.currentConversationId;
-				restoreConversation(message.messages);
+				restoreConversation(message.messages, preserveScroll);
 				renderConversations(message.conversations);
 				const current = message.conversations.find(conversation => conversation.id === currentConversationId);
-				conversationSummary.textContent = current?.summary ?? '新对话';
-				conversationSummary.title = current?.summary ?? '新对话';
+				conversationSummary.textContent = current?.summary ?? 'New conversation';
+				conversationSummary.title = current?.summary ?? 'New conversation';
 				status.textContent = '';
 				setBusy(false);
 			}
@@ -549,9 +585,9 @@ function getWebviewHtml(webview: vscode.Webview) {
 				}
 				if (message.models.length === 0) {
 					const option = document.createElement('option');
-					option.textContent = '无可用模型';
+					option.textContent = 'No models available';
 					modelSelect.appendChild(option);
-					status.textContent = '未找到可用的语言模型';
+					status.textContent = 'No language models are available';
 				}
 				if (selectedModelId && Array.from(modelSelect.options).some(option => option.value === selectedModelId)) {
 					modelSelect.value = selectedModelId;
@@ -561,26 +597,32 @@ function getWebviewHtml(webview: vscode.Webview) {
 			if (message.type === 'modelsError') {
 				modelSelect.replaceChildren();
 				const option = document.createElement('option');
-				option.textContent = '模型加载失败';
+				option.textContent = 'Failed to load models';
 				modelSelect.appendChild(option);
 				modelSelect.disabled = true;
-				status.textContent = '模型加载失败：' + message.message;
+				status.textContent = 'Failed to load models: ' + message.message;
 			}
-			if (message.type === 'started') status.textContent = '正在使用 ' + message.model;
+			if (message.type === 'started') status.textContent = 'Using ' + message.model;
 			if (message.type === 'chunk') {
-				assistantContent.textContent += message.text;
-				messages.scrollTop = messages.scrollHeight;
+				const follow = isNearBottom();
+				assistantContent.classList.remove('loading');
+				assistantText += message.text;
+				renderMarkdown(assistantContent, assistantText);
+				if (follow) scrollToBottom();
 			}
 			if (message.type === 'completed') {
+				assistantContent.classList.remove('loading');
 				status.textContent = '';
 				setBusy(false);
 			}
 			if (message.type === 'cancelled') {
-				status.textContent = '已停止生成';
+				assistantContent.classList.remove('loading');
+				status.textContent = 'Generation stopped';
 				setBusy(false);
 			}
 			if (message.type === 'error') {
-				assistantContent.textContent = '请求失败：' + message.message;
+				assistantContent.classList.remove('loading');
+				assistantContent.textContent = 'Request failed: ' + message.message;
 				status.textContent = '';
 				setBusy(false);
 			}
@@ -591,7 +633,7 @@ function getWebviewHtml(webview: vscode.Webview) {
 }
 
 function createConversation(messages: StoredMessage[]): StoredConversation {
-	const firstUserMessage = messages.find(message => message.role === 'user')?.content ?? '新对话';
+	const firstUserMessage = messages.find(message => message.role === 'user')?.content ?? 'New conversation';
 	return {
 		id: randomUUID(),
 		summary: createSummary(firstUserMessage),
@@ -601,7 +643,8 @@ function createConversation(messages: StoredMessage[]): StoredConversation {
 }
 
 function createSummary(text: string) {
-	return text.length > 42 ? `${text.slice(0, 42)}…` : text;
+	const summary = text.replace(/\s+/g, ' ').trim();
+	return summary.length > 28 ? `${summary.slice(0, 28)}…` : summary;
 }
 
 function getNonce() {
