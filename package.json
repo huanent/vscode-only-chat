@@ -63,7 +63,7 @@
         "temporaryChat.prompt": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The default prompt used for temporary conversations.",
+          "markdownDescription": "The prompt used for temporary conversations.",
           "scope": "window"
         }
       }

@@ -40,8 +40,16 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.icon-button .codicon { font-size: 16px; }
 		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
-		.chat-area { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+		.chat-area { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
 		.messages { overflow-y: auto; padding: 18px max(80px, calc((100% - 900px) / 2)) 28px; scroll-padding-bottom: 24px; }
+		.message-navigation { position: absolute; z-index: 2; top: 50%; left: max(18px, calc((100% - 900px) / 2 - 36px)); max-height: min(55%, 360px); display: none; overflow-y: auto; padding: 4px 0; scrollbar-width: none; transform: translateY(-50%); }
+		.message-navigation::-webkit-scrollbar { display: none; }
+		.message-navigation.visible { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+		.message-anchor { width: 20px; height: 16px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; }
+		.message-anchor::before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; opacity: .55; transition: width 80ms ease, border-radius 80ms ease, opacity 80ms ease; }
+		.message-anchor:hover { color: var(--vscode-foreground); }
+		.message-anchor.active { color: var(--vscode-focusBorder); }
+		.message-anchor.active::before { width: 11px; border-radius: 3px; opacity: 1; }
 		.empty { display: none; }
 		.message { display: flex; padding: 12px 0; }
 		.message-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
@@ -146,7 +154,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.history-row:hover .delete-history, .history-row:focus-within .delete-history, .history-row.active .delete-history { opacity: 1; }
 		.delete-history:hover { color: var(--vscode-errorForeground); }
 		@media (prefers-reduced-motion: reduce) { .history-visible .history-panel, .model-picker.open .model-menu { animation: none; } }
-		@media (max-width: 620px) { .model-picker { max-width: 42vw; } }
+		@media (max-width: 620px) { .model-picker { max-width: 42vw; } .message-navigation { display: none !important; } }
 	</style>
 </head>
 <body>
@@ -171,6 +179,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				</ul>
 			</aside>
 			<div class="chat-area">
+				<nav id="message-navigation" class="message-navigation" aria-label="Message navigation"></nav>
 				<main id="messages" class="messages">
 					<div id="empty" class="empty"></div>
 				</main>
@@ -209,6 +218,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			katexOptions: { strict: 'ignore', throwOnError: false },
 		});
 		const messages = document.getElementById('messages');
+		const messageNavigation = document.getElementById('message-navigation');
 		const empty = document.getElementById('empty');
 		const input = document.getElementById('input');
 		const modelPicker = document.getElementById('model-picker');
@@ -229,6 +239,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		let editMessageIndex;
 		let availableModels = [];
 		let selectedModelId = '';
+		let anchoredMessage;
 
 		function setModelMenuVisible(visible, focusSelected = false) {
 			if (modelTrigger.disabled) visible = false;
@@ -332,6 +343,70 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			messages.scrollTop = messages.scrollHeight;
 		}
 
+		function setActiveMessageAnchor(messageItem) {
+			const messageItems = Array.from(messages.querySelectorAll('.message'));
+			const activeIndex = messageItems.indexOf(messageItem);
+			if (activeIndex < 0) return;
+			for (const [index, anchor] of Array.from(messageNavigation.children).entries()) {
+				anchor.classList.toggle('active', index === activeIndex);
+				anchor.setAttribute('aria-current', index === activeIndex ? 'true' : 'false');
+			}
+			messageNavigation.children[activeIndex]?.scrollIntoView({ block: 'nearest' });
+		}
+
+		function updateActiveMessageAnchor() {
+			const messageItems = Array.from(messages.querySelectorAll('.message'));
+			if (messageItems.length === 0) return;
+			if (anchoredMessage?.isConnected) {
+				setActiveMessageAnchor(anchoredMessage);
+				return;
+			}
+			const messagesRect = messages.getBoundingClientRect();
+			const targetTop = messagesRect.top + Math.min(messages.clientHeight * .28, 160);
+			const visibleItems = messageItems.filter(messageItem => {
+				const rect = messageItem.getBoundingClientRect();
+				return rect.bottom > messagesRect.top && rect.top < messagesRect.bottom;
+			});
+			const candidates = visibleItems.length > 0 ? visibleItems : messageItems;
+			let activeMessage = candidates[0];
+			let activeDistance = Math.abs(activeMessage.getBoundingClientRect().top - targetTop);
+			for (const messageItem of candidates.slice(1)) {
+				const distance = Math.abs(messageItem.getBoundingClientRect().top - targetTop);
+				if (distance < activeDistance) {
+					activeMessage = messageItem;
+					activeDistance = distance;
+				}
+			}
+			setActiveMessageAnchor(activeMessage);
+		}
+
+		function anchorMessage(messageItem) {
+			anchoredMessage = messageItem;
+			setActiveMessageAnchor(messageItem);
+		}
+
+		function refreshMessageNavigation() {
+			messageNavigation.replaceChildren();
+			const messageItems = Array.from(messages.querySelectorAll('.message'));
+			for (const [index, messageItem] of messageItems.entries()) {
+				const content = messageItem.querySelector('.message-content');
+				const role = messageItem.classList.contains('user') ? 'User' : 'Assistant';
+				const preview = (content?.dataset.messageText ?? '').replace(/\s+/g, ' ').trim();
+				const anchor = document.createElement('button');
+				anchor.className = 'message-anchor';
+				anchor.type = 'button';
+				anchor.title = role + ' message ' + (index + 1) + (preview ? ': ' + preview.slice(0, 80) : '');
+				anchor.setAttribute('aria-label', 'Go to ' + role.toLowerCase() + ' message ' + (index + 1));
+				anchor.addEventListener('click', () => {
+					anchorMessage(messageItem);
+					messageItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				});
+				messageNavigation.appendChild(anchor);
+			}
+			messageNavigation.classList.toggle('visible', messageItems.length > 1);
+			updateActiveMessageAnchor();
+		}
+
 		function appendMessage(role, text, loading = false, follow = true, messageIndex) {
 			empty.hidden = true;
 			const item = document.createElement('article');
@@ -382,22 +457,31 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			item.appendChild(body);
 			messages.appendChild(item);
 			if (follow) scrollToBottom();
+			refreshMessageNavigation();
 			return content;
 		}
 
 		function restoreConversation(storedMessages, preserveScroll) {
 			const distanceFromBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+			const anchoredIndex = preserveScroll && anchoredMessage
+				? Array.from(messages.querySelectorAll('.message')).indexOf(anchoredMessage)
+				: -1;
+			anchoredMessage = undefined;
 			messages.replaceChildren(empty);
 			empty.hidden = storedMessages.length > 0;
 
 			for (const [messageIndex, storedMessage] of storedMessages.entries()) {
 				appendMessage(storedMessage.role, storedMessage.content, false, false, messageIndex);
 			}
+			refreshMessageNavigation();
 			if (preserveScroll) {
 				messages.scrollTop = Math.max(0, messages.scrollHeight - messages.clientHeight - distanceFromBottom);
 			} else {
 				scrollToBottom();
 			}
+			const restoredAnchor = messages.querySelectorAll('.message')[anchoredIndex];
+			if (restoredAnchor) anchorMessage(restoredAnchor);
+			else updateActiveMessageAnchor();
 		}
 
 		function renderConversations(conversations) {
@@ -470,7 +554,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (value) setModelMenuVisible(false);
 			sendButton.title = value ? 'Stop generating' : 'Send';
 			sendButton.setAttribute('aria-label', value ? 'Stop generating' : 'Send');
-			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-debug-stop' : 'codicon-send');
+			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-primitive-square' : 'codicon-send');
 			input.focus();
 		}
 
@@ -483,9 +567,11 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (!text) return;
 			if (editMessageIndex !== undefined) {
 				for (const message of Array.from(messages.querySelectorAll('.message')).slice(editMessageIndex)) message.remove();
+				refreshMessageNavigation();
 			}
 			appendMessage('user', text);
 			assistantContent = appendMessage('assistant', '', true);
+			anchorMessage(assistantContent.closest('.message').previousElementSibling);
 			assistantText = '';
 			input.replaceChildren();
 			setBusy(true);
@@ -540,6 +626,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				send();
 			}
 		});
+		messages.addEventListener('wheel', () => { anchoredMessage = undefined; }, { passive: true });
+		messages.addEventListener('touchmove', () => { anchoredMessage = undefined; }, { passive: true });
+		messages.addEventListener('scroll', updateActiveMessageAnchor, { passive: true });
 		vscode.postMessage({ type: 'ready' });
 
 		window.addEventListener('message', event => {
@@ -579,8 +668,12 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				setModelMenuVisible(false);
 				status.textContent = 'Failed to load models: ' + message.message;
 			}
-			if (message.type === 'started') status.textContent = 'Using ' + message.model;
+			if (message.type === 'started') {
+				status.textContent = 'Using ' + message.model;
+				anchorMessage(assistantContent.closest('.message'));
+			}
 			if (message.type === 'chunk') {
+				anchorMessage(assistantContent.closest('.message'));
 				const follow = isNearBottom();
 				assistantContent.classList.remove('loading');
 				assistantText += message.text;
@@ -591,6 +684,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (message.type === 'completed') {
 				assistantContent.classList.remove('loading');
 				assistantContent.closest('.message').classList.remove('pending');
+				anchorMessage(assistantContent.closest('.message'));
 				status.textContent = '';
 				setBusy(false);
 			}

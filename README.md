@@ -23,7 +23,7 @@ VS Code may ask for permission to access language models when the first request 
 
 ## Settings
 
-- `temporaryChat.prompt`: The default prompt used for temporary conversations.
+- `temporaryChat.prompt`: The prompt used for temporary conversations.
 
 ## Development
 
