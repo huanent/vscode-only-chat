@@ -91,6 +91,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.user .message-body { max-width: 82%; align-items: flex-end; }
 		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border: 1px solid var(--vscode-chat-requestBorder, var(--vscode-contrastBorder, var(--vscode-panel-border))); border-radius: 4px; background: var(--vscode-chat-requestBackground, var(--vscode-input-background, rgba(127, 127, 127, .12))); }
 		.user .message-content { max-width: 100%; }
+		.user.editing .message-content { border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
 		.message-actions { height: 26px; display: flex; align-items: center; gap: 4px; padding-top: 2px; opacity: 0; pointer-events: none; }
 		.message:hover .message-actions, .message:focus-within .message-actions { opacity: 1; pointer-events: auto; }
 		.message.pending .message-actions { visibility: hidden; pointer-events: none; }
@@ -107,10 +108,16 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.composer { width: calc(100% - var(--chat-gutter) * 2); max-width: var(--chat-max-width); justify-self: center; padding: 8px 0 6px; background: var(--vscode-editor-background); }
 		.input-shell { position: relative; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-input-background, rgba(127, 127, 127, .08)); transition: border-color 80ms ease; }
 		.input-shell:focus-within { border-color: var(--vscode-focusBorder); }
+		.input-shell.editing { border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
 		.message-input { width: 100%; min-height: 40px; max-height: 180px; overflow-y: auto; padding: 7px 10px 1px; color: var(--vscode-input-foreground); line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
 		.message-input:empty::before { color: var(--vscode-input-placeholderForeground); content: attr(data-placeholder); pointer-events: none; }
 		.message-input[contenteditable="false"] { opacity: .6; }
 		.input-toolbar { min-height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 4px 3px 5px; }
+		.edit-indicator { min-width: 0; display: none; align-items: center; gap: 5px; color: var(--vscode-focusBorder); font-size: 11px; }
+		.input-shell.editing .edit-indicator { display: flex; }
+		.edit-indicator .codicon { flex: none; font-size: 12px; }
+		.edit-indicator-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.edit-indicator-key { flex: none; color: var(--vscode-descriptionForeground); }
 		.input-toolbar .spacer { flex: 1; }
 		.model-picker { position: relative; min-width: 0; max-width: min(60vw, 300px); }
 		.model-trigger { min-width: 0; max-width: 100%; height: 26px; display: flex; align-items: center; gap: 5px; padding: 0 5px 0 6px; border: 0; border-radius: 4px; color: var(--vscode-descriptionForeground); background: transparent; font-size: 11px; }
@@ -195,9 +202,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 					</div>
 				</main>
 				<section class="composer">
-					<div class="input-shell">
+					<div id="input-shell" class="input-shell">
 						<div id="input" class="message-input" role="textbox" aria-label="Message" aria-multiline="true" contenteditable="plaintext-only" data-placeholder="Type a message. Enter to send, Shift+Enter for a new line" autofocus></div>
 						<div class="input-toolbar">
+							<div class="edit-indicator" role="status"><span class="codicon codicon-edit" aria-hidden="true"></span><span class="edit-indicator-label">Editing message</span><span class="edit-indicator-key">Esc to cancel</span></div>
 							<div id="model-picker" class="model-picker">
 								<button id="model-trigger" class="model-trigger" type="button" aria-label="Language model" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu" disabled>
 									<span class="codicon codicon-sparkle" aria-hidden="true"></span>
@@ -231,6 +239,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const messageNavigation = document.getElementById('message-navigation');
 		const empty = document.getElementById('empty');
 		const input = document.getElementById('input');
+		const inputShell = document.getElementById('input-shell');
 		const modelPicker = document.getElementById('model-picker');
 		const modelTrigger = document.getElementById('model-trigger');
 		const modelTriggerLabel = document.getElementById('model-trigger-label');
@@ -445,6 +454,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			empty.hidden = true;
 			const item = document.createElement('article');
 			item.className = 'message ' + role;
+			if (messageIndex !== undefined) item.dataset.messageIndex = String(messageIndex);
 			if (loading) item.classList.add('pending');
 			const body = document.createElement('div');
 			body.className = 'message-body';
@@ -479,9 +489,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				editButton.setAttribute('aria-label', 'Edit message');
 				editButton.addEventListener('click', () => {
 					if (busy) return;
-					editMessageIndex = messageIndex;
-					input.textContent = content.dataset.messageText ?? '';
-					status.textContent = 'Editing message';
+					setEditMode(messageIndex, content.dataset.messageText ?? '');
 					input.focus();
 				});
 				actions.appendChild(editButton);
@@ -593,6 +601,20 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			input.focus();
 		}
 
+		function setEditMode(messageIndex, text = '') {
+			editMessageIndex = messageIndex;
+			inputShell.classList.toggle('editing', messageIndex !== undefined);
+			for (const message of messages.querySelectorAll('.message.editing')) message.classList.remove('editing');
+			if (messageIndex !== undefined) {
+				messages.querySelector('.message[data-message-index="' + messageIndex + '"]')?.classList.add('editing');
+				input.textContent = text;
+				status.textContent = 'Editing message';
+			} else {
+				input.replaceChildren();
+				status.textContent = '';
+			}
+		}
+
 		function send() {
 			if (busy) {
 				vscode.postMessage({ type: 'cancel' });
@@ -600,8 +622,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			}
 			const text = input.textContent.trim();
 			if (!text) return;
-			if (editMessageIndex !== undefined) {
-				for (const message of Array.from(messages.querySelectorAll('.message')).slice(editMessageIndex)) message.remove();
+			const sendingEditMessageIndex = editMessageIndex;
+			if (sendingEditMessageIndex !== undefined) {
+				for (const message of Array.from(messages.querySelectorAll('.message')).slice(sendingEditMessageIndex)) message.remove();
 				refreshMessageNavigation();
 			}
 			appendMessage('user', text);
@@ -609,10 +632,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			anchorMessage(assistantContent.closest('.message').previousElementSibling);
 			assistantText = '';
 			input.replaceChildren();
+			setEditMode(undefined);
 			setBusy(true);
 			status.textContent = 'Connecting to model...';
-			vscode.postMessage({ type: 'send', text, modelId: selectedModelId, editMessageIndex });
-			editMessageIndex = undefined;
+			vscode.postMessage({ type: 'send', text, modelId: selectedModelId, editMessageIndex: sendingEditMessageIndex });
 		}
 
 		sendButton.addEventListener('click', send);
@@ -649,6 +672,11 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		});
 		document.addEventListener('keydown', event => {
 			if (event.key === 'Escape') {
+				if (editMessageIndex !== undefined) {
+					event.preventDefault();
+					setEditMode(undefined);
+					input.focus();
+				}
 				setHistoryVisible(false);
 				setModelMenuVisible(false);
 			}
@@ -678,8 +706,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				renderConversations(message.conversations);
 				conversationSummary.textContent = message.currentSummary;
 				conversationSummary.title = message.currentSummary;
-				status.textContent = '';
-				editMessageIndex = undefined;
+				setEditMode(undefined);
 				setBusy(false);
 			}
 			if (message.type === 'summaryChunk' && message.conversationId === currentConversationId) {
