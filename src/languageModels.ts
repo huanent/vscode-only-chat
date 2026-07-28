@@ -1,16 +1,5 @@
 import * as vscode from 'vscode';
 
-export function deduplicateModels(models: readonly vscode.LanguageModelChat[]) {
-	const uniqueModels = new Map<string, vscode.LanguageModelChat>();
-	for (const model of models) {
-		const key = `${model.vendor}\u0000${model.name}`;
-		if (!uniqueModels.has(key)) {
-			uniqueModels.set(key, model);
-		}
-	}
-	return [...uniqueModels.values()];
-}
-
 export async function getLanguageModelProviderNames(context: vscode.ExtensionContext, models: readonly vscode.LanguageModelChat[]) {
 	const namesByVendor = new Map<string, string>();
 	for (const extension of vscode.extensions.all) {

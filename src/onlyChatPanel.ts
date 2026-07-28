@@ -10,7 +10,7 @@ import {
 	StoredConversation,
 	StoredMessage,
 } from './conversation';
-import { deduplicateModels, getLanguageModelProviderNames } from './languageModels';
+import { getLanguageModelProviderNames } from './languageModels';
 import { getWebviewHtml } from './webview';
 
 type WebviewMessage =
@@ -328,11 +328,10 @@ class OnlyChatPanel {
 		}
 		if (!this.modelsPromise) {
 			const modelsPromise = Promise.resolve(vscode.lm.selectChatModels()).then(models => {
-				const uniqueModels = deduplicateModels(models);
 				if (this.modelsPromise === modelsPromise) {
-					this.models = uniqueModels;
+					this.models = models;
 				}
-				return uniqueModels;
+				return models;
 			}).finally(() => {
 				if (this.modelsPromise === modelsPromise) {
 					this.modelsPromise = undefined;
