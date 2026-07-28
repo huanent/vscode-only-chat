@@ -129,10 +129,14 @@ class OnlyChatPanel {
 	}
 
 	private static createEditorUri(newConversation: boolean) {
+		const query = new URLSearchParams({ id: randomUUID() });
+		if (newConversation) {
+			query.set('new', '1');
+		}
 		return vscode.Uri.from({
 			scheme: 'only-chat',
-			path: `/chat-${randomUUID()}.only-chat`,
-			query: newConversation ? 'new=1' : '',
+			path: '/New conversation',
+			query: query.toString(),
 		});
 	}
 
@@ -150,7 +154,7 @@ class OnlyChatPanel {
 		this.panel = panel;
 		this.context = context;
 		this.document = document;
-		this.currentConversationId = document.uri.query === 'new=1'
+		this.currentConversationId = new URLSearchParams(document.uri.query).get('new') === '1'
 			? randomUUID()
 			: context.globalState.get<string>(currentConversationStorageKey)
 				?? context.globalState.get<string>(legacyCurrentConversationStorageKey)
