@@ -145,9 +145,12 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.history-panel { position: absolute; z-index: 10; top: 42px; left: 8px; width: min(360px, calc(100% - 16px)); max-height: min(520px, calc(100vh - 54px)); display: none; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 8px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 8px 24px var(--vscode-widget-shadow); }
 		.history-visible .history-panel { display: grid; animation: reveal-history 120ms ease-out; transform-origin: top left; }
 		@keyframes reveal-history { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-		.history-header { min-height: 40px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 11px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
-		.history-header-icon { color: var(--vscode-icon-foreground); font-size: 16px; }
-		.history-title { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+		.history-header { min-height: 40px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
+		.history-search { min-width: 0; height: 28px; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; color: var(--vscode-input-foreground); background: var(--vscode-input-background); }
+		.history-search:focus-within { border-color: var(--vscode-focusBorder); }
+		.history-search-icon { color: var(--vscode-input-placeholderForeground); font-size: 14px; }
+		.history-search-input { min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; font-size: 12px; }
+		.history-search-input::placeholder { color: var(--vscode-input-placeholderForeground); }
 		.history-list { min-height: 0; overflow-y: auto; margin: 0; padding: 6px; background: transparent; list-style: none; }
 		.history-empty { min-height: 150px; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 24px 16px; color: var(--vscode-descriptionForeground); text-align: center; }
 		.history-empty .codicon { font-size: 24px; opacity: .65; }
@@ -184,8 +187,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		<div id="workspace" class="workspace">
 			<aside id="history-panel" class="history-panel" aria-label="Conversation history">
 				<div class="history-header">
-					<span class="codicon codicon-history history-header-icon" aria-hidden="true"></span>
-					<span class="history-title">Conversation history</span>
+					<label class="history-search">
+						<span class="codicon codicon-search history-search-icon" aria-hidden="true"></span>
+						<input id="history-search" class="history-search-input" type="search" placeholder="Filter conversations" aria-label="Filter conversations">
+					</label>
 					<button id="close-history" class="icon-button" title="Close history" aria-label="Close conversation history"><span class="codicon codicon-close" aria-hidden="true"></span></button>
 				</div>
 				<ul id="history-list" class="history-list">
@@ -250,6 +255,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const workspace = document.getElementById('workspace');
 		const toggleHistoryButton = document.getElementById('toggle-history');
 		const historyPanel = document.getElementById('history-panel');
+		const historySearch = document.getElementById('history-search');
 		const historyList = document.getElementById('history-list');
 		let assistantContent;
 		let assistantText = '';
@@ -259,6 +265,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		let availableModels = [];
 		let selectedModelId = '';
 		let anchoredMessage;
+		let conversationHistory = [];
+		const messageNavigationThreshold = 6;
 
 		function setModelMenuVisible(visible, focusSelected = false) {
 			if (modelTrigger.disabled) visible = false;
@@ -431,6 +439,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		function refreshMessageNavigation() {
 			messageNavigation.replaceChildren();
 			const messageItems = Array.from(messages.querySelectorAll('.message'));
+			const navigationVisible = messageItems.length > messageNavigationThreshold;
+			messageNavigation.classList.toggle('visible', navigationVisible);
+			if (!navigationVisible) return;
 			for (const [index, messageItem] of messageItems.entries()) {
 				const content = messageItem.querySelector('.message-content');
 				const role = messageItem.classList.contains('user') ? 'User' : 'Assistant';
@@ -446,7 +457,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				});
 				messageNavigation.appendChild(anchor);
 			}
-			messageNavigation.classList.toggle('visible', messageItems.length > 1);
 			updateActiveMessageAnchor();
 		}
 
@@ -528,17 +538,24 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		}
 
 		function renderConversations(conversations) {
+			if (conversations) conversationHistory = conversations;
+			const query = historySearch.value.trim().toLocaleLowerCase();
+			const filteredConversations = query
+				? conversationHistory.filter(conversation => conversation.summary.toLocaleLowerCase().includes(query))
+				: conversationHistory;
 			historyList.replaceChildren();
-			if (conversations.length === 0) {
+			if (filteredConversations.length === 0) {
 				const emptyItem = document.createElement('li');
 				emptyItem.className = 'history-empty';
-				emptyItem.innerHTML = '<span class="codicon codicon-comment-discussion" aria-hidden="true"></span><span class="history-empty-title">No conversations yet</span><span class="history-empty-description">Your recent chats will appear here.</span>';
+				emptyItem.innerHTML = query
+					? '<span class="codicon codicon-search" aria-hidden="true"></span><span class="history-empty-title">No matching conversations</span><span class="history-empty-description">Try a different keyword.</span>'
+					: '<span class="codicon codicon-comment-discussion" aria-hidden="true"></span><span class="history-empty-title">No conversations yet</span><span class="history-empty-description">Your recent chats will appear here.</span>';
 				historyList.appendChild(emptyItem);
 				return;
 			}
 
 			let currentGroup;
-			for (const conversation of conversations) {
+			for (const conversation of filteredConversations) {
 				const group = getConversationGroup(conversation.updatedAt);
 				if (group !== currentGroup) {
 					currentGroup = group;
@@ -663,6 +680,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		toggleHistoryButton.addEventListener('click', () => {
 			setHistoryVisible(!workspace.classList.contains('history-visible'));
 		});
+		historySearch.addEventListener('input', () => renderConversations());
 		document.getElementById('close-history').addEventListener('click', () => setHistoryVisible(false));
 		document.addEventListener('click', event => {
 			if (!historyPanel.contains(event.target) && !toggleHistoryButton.contains(event.target)) {
@@ -734,7 +752,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				status.textContent = 'Failed to load models: ' + message.message;
 			}
 			if (message.type === 'started') {
-				status.textContent = 'Using ' + message.model;
 				setMessageModel(assistantContent, message.model);
 				anchorMessage(assistantContent.closest('.message'));
 			}

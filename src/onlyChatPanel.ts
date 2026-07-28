@@ -98,8 +98,8 @@ class OnlyChatPanel {
 
 	static async show() {
 		if (OnlyChatPanel.current) {
-			await OnlyChatPanel.current.newConversation();
 			OnlyChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
+			await OnlyChatPanel.current.newConversation();
 			return;
 		}
 		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(), editorViewType, {
