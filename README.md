@@ -1,29 +1,35 @@
 # Only Chat
 
-Only Chat provides a focused AI chat panel for VS Code. Conversations are saved in the extension's local state and remain available after the panel is closed.
+A focused AI chat editor for VS Code, powered by the Language Model API.
 
 ## Features
 
-- Open the chat panel with `Cmd+Alt+I` on macOS or `Ctrl+Alt+I` on Windows and Linux.
-- Use AI models available through the VS Code Language Model API.
-- Select a language model below the message input. The list refreshes automatically when available models change.
-- Create, switch between, and delete multiple conversations. Messages and context are restored when the panel is reopened.
-- Stream model responses and stop generation at any time.
-- Open VS Code settings from the panel to configure the default prompt.
+- Use any language model available in VS Code and switch models per request.
+- Stream responses with support for Markdown, syntax highlighting, tables, and math.
+- Create, switch, and delete conversations stored in VS Code local state.
+- Open multiple chat tabs and continue from shared conversation history.
+- Copy responses, edit an earlier message, regenerate the following conversation, or stop an active request.
+- Configure a custom conversation prompt from VS Code settings.
 
-## Usage
+## Getting Started
 
-1. Install, sign in to, and authorize an extension that provides a language model, such as GitHub Copilot.
-2. Use the keyboard shortcut or run `Only Chat: Open Chat` from the Command Palette.
-3. Select the language model to use below the message input.
-4. Type a message and press `Enter` to send it. Use `Shift+Enter` to insert a new line.
-5. Use the history and new conversation buttons to manage conversations. Use the settings button to configure the prompt.
+1. Install and sign in to a VS Code extension that provides language models, such as GitHub Copilot.
+2. Run **Only Chat: Open Chat** from the Command Palette or use the shortcut below.
+3. Select a model, enter a message, and press `Enter`. Use `Shift+Enter` for a new line.
 
-VS Code may ask for permission to access language models when the first request is sent.
+VS Code may request permission to access language models when you send the first message.
+
+## Shortcuts
+
+| Action | macOS | Windows / Linux |
+| --- | --- | --- |
+| Open Only Chat | `Cmd+Alt+I` | `Ctrl+Alt+I` |
+| New conversation | `Cmd+N` | `Ctrl+N` |
+| New chat tab | `Cmd+T` | `Ctrl+T` |
 
 ## Settings
 
-- `onlyChat.prompt`: The prompt used for conversations.
+- `onlyChat.prompt`: instructions added to every conversation.
 
 ## Development
 

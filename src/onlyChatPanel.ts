@@ -25,8 +25,8 @@ type WebviewMessage =
 
 const commandId = 'onlyChat.open';
 const newConversationCommandId = 'onlyChat.newConversation';
+const newTabCommandId = 'onlyChat.newTab';
 const editorViewType = 'onlyChat.editor';
-const editorUri = vscode.Uri.from({ scheme: 'only-chat', path: '/ ' });
 const selectedModelStorageKey = 'onlyChat.selectedModelId';
 const conversationsStorageKey = 'onlyChat.conversations';
 const currentConversationStorageKey = 'onlyChat.currentConversationId';
@@ -36,10 +36,12 @@ const legacyConversationsStorageKey = 'temporaryChat.conversations';
 const legacyCurrentConversationStorageKey = 'temporaryChat.currentConversationId';
 
 export function registerOnlyChat(context: vscode.ExtensionContext) {
+	const editorProvider = new OnlyChatEditorProvider(context);
 	context.subscriptions.push(
 		vscode.commands.registerCommand(commandId, () => OnlyChatPanel.show(context)),
 		vscode.commands.registerCommand(newConversationCommandId, () => OnlyChatPanel.startNewConversation(context)),
-		vscode.window.registerCustomEditorProvider(editorViewType, new OnlyChatEditorProvider(context), {
+		vscode.commands.registerCommand(newTabCommandId, () => OnlyChatPanel.openNewTab()),
+		vscode.window.registerCustomEditorProvider(editorViewType, editorProvider, {
 			webviewOptions: { retainContextWhenHidden: true },
 			supportsMultipleEditorsPerDocument: true,
 		}),
@@ -47,9 +49,15 @@ export function registerOnlyChat(context: vscode.ExtensionContext) {
 }
 
 class OnlyChatDocument implements vscode.CustomDocument {
-	readonly conversations: StoredConversation[];
+	constructor(readonly uri: vscode.Uri, readonly conversations: StoredConversation[]) { }
 
-	constructor(readonly uri: vscode.Uri, context: vscode.ExtensionContext) {
+	dispose() { }
+}
+
+class OnlyChatEditorProvider implements vscode.CustomReadonlyEditorProvider<OnlyChatDocument> {
+	private readonly conversations: StoredConversation[];
+
+	constructor(private readonly context: vscode.ExtensionContext) {
 		this.conversations = context.globalState.get<StoredConversation[]>(conversationsStorageKey)
 			?? context.globalState.get<StoredConversation[]>(legacyConversationsStorageKey, []);
 		if (this.conversations.length === 0) {
@@ -60,17 +68,15 @@ class OnlyChatDocument implements vscode.CustomDocument {
 		}
 	}
 
-	dispose() { }
-}
-
-class OnlyChatEditorProvider implements vscode.CustomReadonlyEditorProvider<OnlyChatDocument> {
-	constructor(private readonly context: vscode.ExtensionContext) { }
-
 	openCustomDocument(uri: vscode.Uri) {
-		return new OnlyChatDocument(uri, this.context);
+		return new OnlyChatDocument(uri, this.conversations);
 	}
 
 	resolveCustomEditor(document: OnlyChatDocument, panel: vscode.WebviewPanel) {
+		if (OnlyChatPanel.hasEditor(document)) {
+			void OnlyChatPanel.replaceSplitEditor(panel);
+			return;
+		}
 		OnlyChatPanel.resolve(panel, this.context, document);
 	}
 }
@@ -94,7 +100,7 @@ class OnlyChatPanel {
 			OnlyChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
 			return;
 		}
-		await vscode.commands.executeCommand('vscode.openWith', editorUri, editorViewType, {
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(false), editorViewType, {
 			viewColumn: vscode.ViewColumn.Active,
 		});
 	}
@@ -104,24 +110,52 @@ class OnlyChatPanel {
 		await OnlyChatPanel.current?.newConversation();
 	}
 
+	static async openNewTab() {
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(true), editorViewType, {
+			viewColumn: vscode.ViewColumn.Active,
+		});
+	}
+
+	static hasEditor(document: OnlyChatDocument) {
+		return [...OnlyChatPanel.editors].some(editor => editor.document === document);
+	}
+
+	static async replaceSplitEditor(panel: vscode.WebviewPanel) {
+		const viewColumn = panel.viewColumn ?? vscode.ViewColumn.Active;
+		panel.dispose();
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(true), editorViewType, {
+			viewColumn,
+		});
+	}
+
+	private static createEditorUri(newConversation: boolean) {
+		return vscode.Uri.from({
+			scheme: 'only-chat',
+			path: `/chat-${randomUUID()}.only-chat`,
+			query: newConversation ? 'new=1' : '',
+		});
+	}
+
 	static resolve(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: OnlyChatDocument) {
 		const editor = new OnlyChatPanel(panel, context, document);
 		OnlyChatPanel.editors.add(editor);
 		OnlyChatPanel.current = editor;
 	}
 
-	private static getEditors(document: OnlyChatDocument) {
-		return [...OnlyChatPanel.editors].filter(editor => editor.document === document);
+	private static getEditors() {
+		return [...OnlyChatPanel.editors];
 	}
 
 	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: OnlyChatDocument) {
 		this.panel = panel;
 		this.context = context;
 		this.document = document;
-		this.currentConversationId = context.globalState.get<string>(currentConversationStorageKey)
-			?? context.globalState.get<string>(legacyCurrentConversationStorageKey)
-			?? document.conversations[0]?.id
-			?? randomUUID();
+		this.currentConversationId = document.uri.query === 'new=1'
+			? randomUUID()
+			: context.globalState.get<string>(currentConversationStorageKey)
+				?? context.globalState.get<string>(legacyCurrentConversationStorageKey)
+				?? document.conversations[0]?.id
+				?? randomUUID();
 		this.panel.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [context.extensionUri],
@@ -191,7 +225,7 @@ class OnlyChatPanel {
 
 	private async refreshConversationHistory() {
 		const conversations = this.getConversationItems();
-		await Promise.all(OnlyChatPanel.getEditors(this.document)
+		await Promise.all(OnlyChatPanel.getEditors()
 			.filter(editor => editor !== this)
 			.map(editor => editor.panel.webview.postMessage({
 				type: 'conversationHistory',
@@ -244,7 +278,7 @@ class OnlyChatPanel {
 		this.cancelSummary(conversationId);
 		this.document.conversations.splice(0, this.document.conversations.length,
 			...this.document.conversations.filter(conversation => conversation.id !== conversationId));
-		for (const editor of OnlyChatPanel.getEditors(this.document)) {
+		for (const editor of OnlyChatPanel.getEditors()) {
 			if (editor.currentConversationId === conversationId) {
 				editor.cancel();
 				editor.currentConversationId = [...this.document.conversations]
@@ -252,7 +286,7 @@ class OnlyChatPanel {
 			}
 		}
 		await this.persistConversations();
-		await Promise.all(OnlyChatPanel.getEditors(this.document)
+		await Promise.all(OnlyChatPanel.getEditors()
 			.map(editor => editor.renderConversations()));
 	}
 
@@ -463,7 +497,7 @@ class OnlyChatPanel {
 	}
 
 	private async postSummary(conversationId: string, summary: string) {
-		await Promise.all(OnlyChatPanel.getEditors(this.document).map(editor => {
+		await Promise.all(OnlyChatPanel.getEditors().map(editor => {
 			if (editor.currentConversationId === conversationId) {
 				editor.panel.title = createTabTitle(summary);
 			}
@@ -478,7 +512,7 @@ class OnlyChatPanel {
 		}
 		conversation.summary = summary;
 		await this.persistConversations();
-		await Promise.all(OnlyChatPanel.getEditors(this.document).map(editor => editor.renderConversations()));
+		await Promise.all(OnlyChatPanel.getEditors().map(editor => editor.renderConversations()));
 	}
 
 	private cancelSummary(conversationId: string) {
@@ -494,7 +528,7 @@ class OnlyChatPanel {
 		this.summaryCancellations.clear();
 		OnlyChatPanel.editors.delete(this);
 		if (OnlyChatPanel.current === this) {
-			OnlyChatPanel.current = OnlyChatPanel.getEditors(this.document)[0];
+			OnlyChatPanel.current = OnlyChatPanel.getEditors()[0];
 		}
 		for (const disposable of this.disposables) {
 			disposable.dispose();
