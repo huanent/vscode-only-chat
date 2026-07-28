@@ -34,15 +34,15 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		button:disabled { cursor: default; opacity: .5; }
 		.app { position: relative; height: 100vh; padding:0 4px; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
 		header { position: relative; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
-		.conversation-summary { position: absolute; left: 50%; width: min(calc(100% - 160px), 900px); overflow: hidden; font-size: 12px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; transform: translateX(-50%); }
+		.conversation-summary { position: absolute; left: 50%; width: calc(100% - 160px); overflow: hidden; font-size: 12px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; transform: translateX(-50%); }
 		.header-actions { z-index: 1; display: flex; align-items: center; gap: 2px; }
 		.icon-button { width: 28px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.icon-button .codicon { font-size: 16px; }
 		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 		.chat-area { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
-		.messages { overflow-y: auto; padding: 18px max(80px, calc((100% - 900px) / 2)) 28px; scroll-padding-bottom: 24px; }
-		.message-navigation { position: absolute; z-index: 2; top: 50%; left: max(18px, calc((100% - 900px) / 2 - 36px)); max-height: min(55%, 360px); display: none; overflow-y: auto; padding: 4px 0; scrollbar-width: none; transform: translateY(-50%); }
+		.messages { overflow-y: auto; padding: 18px 80px 28px; scroll-padding-bottom: 24px; }
+		.message-navigation { position: absolute; z-index: 2; top: 50%; left: 18px; max-height: min(55%, 360px); display: none; overflow-y: auto; padding: 4px 0; scrollbar-width: none; transform: translateY(-50%); }
 		.message-navigation::-webkit-scrollbar { display: none; }
 		.message-navigation.visible { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 		.message-anchor { width: 20px; height: 16px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 3px; color: var(--vscode-descriptionForeground); background: transparent; }
@@ -103,7 +103,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.message-content.loading::after { animation-delay: 300ms; }
 		.message-content.loading { background-image: radial-gradient(circle, var(--vscode-descriptionForeground) 2px, transparent 2.5px); background-position: center; background-repeat: no-repeat; }
 		@keyframes loading-dot { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
-		.composer { padding: 8px max(80px, calc((100% - 900px) / 2)) 6px; background: var(--vscode-editor-background); }
+		.composer { padding: 8px 80px 6px; background: var(--vscode-editor-background); }
 		.input-shell { position: relative; border: 1px solid var(--vscode-panel-border); border-radius: 8px; background: var(--vscode-input-background, rgba(127, 127, 127, .08)); transition: border-color 80ms ease; }
 		.input-shell:focus-within { border-color: var(--vscode-focusBorder); }
 		.message-input { width: 100%; min-height: 40px; max-height: 180px; overflow-y: auto; padding: 7px 10px 1px; color: var(--vscode-input-foreground); line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; }
