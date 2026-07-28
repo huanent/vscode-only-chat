@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { registerTemporaryChat } from './temporaryChatPanel';
+import { registerOnlyChat } from './onlyChatPanel';
 
 export function activate(context: vscode.ExtensionContext) {
-	registerTemporaryChat(context);
+	registerOnlyChat(context);
 }
 
 export function deactivate() { }

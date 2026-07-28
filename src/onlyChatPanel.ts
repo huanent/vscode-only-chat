@@ -23,33 +23,37 @@ type WebviewMessage =
 	| { type: 'cancel' }
 	| { type: 'openSettings' };
 
-const commandId = 'temporaryChat.open';
-const newConversationCommandId = 'temporaryChat.newConversation';
-const editorViewType = 'temporaryChat.editor';
-const editorUri = vscode.Uri.from({ scheme: 'temporary-chat', path: '/ ' });
-const selectedModelStorageKey = 'temporaryChat.selectedModelId';
-const conversationStorageKey = 'temporaryChat.conversation';
-const conversationsStorageKey = 'temporaryChat.conversations';
-const currentConversationStorageKey = 'temporaryChat.currentConversationId';
+const commandId = 'onlyChat.open';
+const newConversationCommandId = 'onlyChat.newConversation';
+const editorViewType = 'onlyChat.editor';
+const editorUri = vscode.Uri.from({ scheme: 'only-chat', path: '/ ' });
+const selectedModelStorageKey = 'onlyChat.selectedModelId';
+const conversationsStorageKey = 'onlyChat.conversations';
+const currentConversationStorageKey = 'onlyChat.currentConversationId';
+const legacySelectedModelStorageKey = 'temporaryChat.selectedModelId';
+const legacyConversationStorageKey = 'temporaryChat.conversation';
+const legacyConversationsStorageKey = 'temporaryChat.conversations';
+const legacyCurrentConversationStorageKey = 'temporaryChat.currentConversationId';
 
-export function registerTemporaryChat(context: vscode.ExtensionContext) {
+export function registerOnlyChat(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
-		vscode.commands.registerCommand(commandId, () => TemporaryChatPanel.show(context)),
-		vscode.commands.registerCommand(newConversationCommandId, () => TemporaryChatPanel.startNewConversation(context)),
-		vscode.window.registerCustomEditorProvider(editorViewType, new TemporaryChatEditorProvider(context), {
+		vscode.commands.registerCommand(commandId, () => OnlyChatPanel.show(context)),
+		vscode.commands.registerCommand(newConversationCommandId, () => OnlyChatPanel.startNewConversation(context)),
+		vscode.window.registerCustomEditorProvider(editorViewType, new OnlyChatEditorProvider(context), {
 			webviewOptions: { retainContextWhenHidden: true },
 			supportsMultipleEditorsPerDocument: true,
 		}),
 	);
 }
 
-class TemporaryChatDocument implements vscode.CustomDocument {
+class OnlyChatDocument implements vscode.CustomDocument {
 	readonly conversations: StoredConversation[];
 
 	constructor(readonly uri: vscode.Uri, context: vscode.ExtensionContext) {
-		this.conversations = context.globalState.get<StoredConversation[]>(conversationsStorageKey, []);
+		this.conversations = context.globalState.get<StoredConversation[]>(conversationsStorageKey)
+			?? context.globalState.get<StoredConversation[]>(legacyConversationsStorageKey, []);
 		if (this.conversations.length === 0) {
-			const legacyMessages = context.globalState.get<StoredMessage[]>(conversationStorageKey, []);
+			const legacyMessages = context.globalState.get<StoredMessage[]>(legacyConversationStorageKey, []);
 			if (legacyMessages.length > 0) {
 				this.conversations.push(createConversation(legacyMessages));
 			}
@@ -59,24 +63,24 @@ class TemporaryChatDocument implements vscode.CustomDocument {
 	dispose() { }
 }
 
-class TemporaryChatEditorProvider implements vscode.CustomReadonlyEditorProvider<TemporaryChatDocument> {
+class OnlyChatEditorProvider implements vscode.CustomReadonlyEditorProvider<OnlyChatDocument> {
 	constructor(private readonly context: vscode.ExtensionContext) { }
 
 	openCustomDocument(uri: vscode.Uri) {
-		return new TemporaryChatDocument(uri, this.context);
+		return new OnlyChatDocument(uri, this.context);
 	}
 
-	resolveCustomEditor(document: TemporaryChatDocument, panel: vscode.WebviewPanel) {
-		TemporaryChatPanel.resolve(panel, this.context, document);
+	resolveCustomEditor(document: OnlyChatDocument, panel: vscode.WebviewPanel) {
+		OnlyChatPanel.resolve(panel, this.context, document);
 	}
 }
 
-class TemporaryChatPanel {
-	private static readonly editors = new Set<TemporaryChatPanel>();
-	private static current: TemporaryChatPanel | undefined;
+class OnlyChatPanel {
+	private static readonly editors = new Set<OnlyChatPanel>();
+	private static current: OnlyChatPanel | undefined;
 	private readonly panel: vscode.WebviewPanel;
 	private readonly context: vscode.ExtensionContext;
-	private readonly document: TemporaryChatDocument;
+	private readonly document: OnlyChatDocument;
 	private readonly disposables: vscode.Disposable[] = [];
 	private currentConversationId: string;
 	private cancellation: vscode.CancellationTokenSource | undefined;
@@ -86,8 +90,8 @@ class TemporaryChatPanel {
 	private readonly summaryCancellations = new Map<string, vscode.CancellationTokenSource>();
 
 	static async show(context: vscode.ExtensionContext) {
-		if (TemporaryChatPanel.current) {
-			TemporaryChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
+		if (OnlyChatPanel.current) {
+			OnlyChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
 			return;
 		}
 		await vscode.commands.executeCommand('vscode.openWith', editorUri, editorViewType, {
@@ -96,25 +100,26 @@ class TemporaryChatPanel {
 	}
 
 	static async startNewConversation(context: vscode.ExtensionContext) {
-		await TemporaryChatPanel.show(context);
-		await TemporaryChatPanel.current?.newConversation();
+		await OnlyChatPanel.show(context);
+		await OnlyChatPanel.current?.newConversation();
 	}
 
-	static resolve(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: TemporaryChatDocument) {
-		const editor = new TemporaryChatPanel(panel, context, document);
-		TemporaryChatPanel.editors.add(editor);
-		TemporaryChatPanel.current = editor;
+	static resolve(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: OnlyChatDocument) {
+		const editor = new OnlyChatPanel(panel, context, document);
+		OnlyChatPanel.editors.add(editor);
+		OnlyChatPanel.current = editor;
 	}
 
-	private static getEditors(document: TemporaryChatDocument) {
-		return [...TemporaryChatPanel.editors].filter(editor => editor.document === document);
+	private static getEditors(document: OnlyChatDocument) {
+		return [...OnlyChatPanel.editors].filter(editor => editor.document === document);
 	}
 
-	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: TemporaryChatDocument) {
+	private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, document: OnlyChatDocument) {
 		this.panel = panel;
 		this.context = context;
 		this.document = document;
 		this.currentConversationId = context.globalState.get<string>(currentConversationStorageKey)
+			?? context.globalState.get<string>(legacyCurrentConversationStorageKey)
 			?? document.conversations[0]?.id
 			?? randomUUID();
 		this.panel.webview.options = {
@@ -129,7 +134,7 @@ class TemporaryChatPanel {
 		this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
 		this.panel.onDidChangeViewState(event => {
 			if (event.webviewPanel.active) {
-				TemporaryChatPanel.current = this;
+				OnlyChatPanel.current = this;
 			}
 		}, undefined, this.disposables);
 		this.panel.webview.onDidReceiveMessage(
@@ -169,7 +174,7 @@ class TemporaryChatPanel {
 				this.cancel();
 				break;
 			case 'openSettings':
-				await vscode.commands.executeCommand('workbench.action.openSettings', 'temporaryChat.prompt');
+				await vscode.commands.executeCommand('workbench.action.openSettings', 'onlyChat.prompt');
 				break;
 		}
 	}
@@ -186,7 +191,7 @@ class TemporaryChatPanel {
 
 	private async refreshConversationHistory() {
 		const conversations = this.getConversationItems();
-		await Promise.all(TemporaryChatPanel.getEditors(this.document)
+		await Promise.all(OnlyChatPanel.getEditors(this.document)
 			.filter(editor => editor !== this)
 			.map(editor => editor.panel.webview.postMessage({
 				type: 'conversationHistory',
@@ -239,7 +244,7 @@ class TemporaryChatPanel {
 		this.cancelSummary(conversationId);
 		this.document.conversations.splice(0, this.document.conversations.length,
 			...this.document.conversations.filter(conversation => conversation.id !== conversationId));
-		for (const editor of TemporaryChatPanel.getEditors(this.document)) {
+		for (const editor of OnlyChatPanel.getEditors(this.document)) {
 			if (editor.currentConversationId === conversationId) {
 				editor.cancel();
 				editor.currentConversationId = [...this.document.conversations]
@@ -247,7 +252,7 @@ class TemporaryChatPanel {
 			}
 		}
 		await this.persistConversations();
-		await Promise.all(TemporaryChatPanel.getEditors(this.document)
+		await Promise.all(OnlyChatPanel.getEditors(this.document)
 			.map(editor => editor.renderConversations()));
 	}
 
@@ -255,7 +260,7 @@ class TemporaryChatPanel {
 		await Promise.all([
 			this.context.globalState.update(conversationsStorageKey, this.document.conversations),
 			this.context.globalState.update(currentConversationStorageKey, this.currentConversationId),
-			this.context.globalState.update(conversationStorageKey, undefined),
+			this.context.globalState.update(legacyConversationStorageKey, undefined),
 		]);
 	}
 
@@ -319,7 +324,8 @@ class TemporaryChatPanel {
 		}
 		return this.panel.webview.postMessage({
 			type: 'models',
-			selectedModelId: this.context.globalState.get<string>(selectedModelStorageKey),
+			selectedModelId: this.context.globalState.get<string>(selectedModelStorageKey)
+				?? this.context.globalState.get<string>(legacySelectedModelStorageKey),
 			models: [...visibleModels.values()],
 		});
 	}
@@ -357,7 +363,8 @@ class TemporaryChatPanel {
 		if (!conversation) {
 			this.panel.title = createTabTitle(userText);
 		}
-		const prompt = vscode.workspace.getConfiguration('temporaryChat').get<string>('prompt', '').trim();
+		const prompt = (vscode.workspace.getConfiguration('onlyChat').get<string>('prompt')
+			?? vscode.workspace.getConfiguration('temporaryChat').get<string>('prompt', '')).trim();
 		const requestMessages = [
 			...(prompt ? [vscode.LanguageModelChatMessage.User(prompt, 'instructions')] : []),
 			...(conversation?.messages ?? []).map(message => message.role === 'user'
@@ -456,7 +463,7 @@ class TemporaryChatPanel {
 	}
 
 	private async postSummary(conversationId: string, summary: string) {
-		await Promise.all(TemporaryChatPanel.getEditors(this.document).map(editor => {
+		await Promise.all(OnlyChatPanel.getEditors(this.document).map(editor => {
 			if (editor.currentConversationId === conversationId) {
 				editor.panel.title = createTabTitle(summary);
 			}
@@ -471,7 +478,7 @@ class TemporaryChatPanel {
 		}
 		conversation.summary = summary;
 		await this.persistConversations();
-		await Promise.all(TemporaryChatPanel.getEditors(this.document).map(editor => editor.renderConversations()));
+		await Promise.all(OnlyChatPanel.getEditors(this.document).map(editor => editor.renderConversations()));
 	}
 
 	private cancelSummary(conversationId: string) {
@@ -485,9 +492,9 @@ class TemporaryChatPanel {
 			cancellation.dispose();
 		}
 		this.summaryCancellations.clear();
-		TemporaryChatPanel.editors.delete(this);
-		if (TemporaryChatPanel.current === this) {
-			TemporaryChatPanel.current = TemporaryChatPanel.getEditors(this.document)[0];
+		OnlyChatPanel.editors.delete(this);
+		if (OnlyChatPanel.current === this) {
+			OnlyChatPanel.current = OnlyChatPanel.getEditors(this.document)[0];
 		}
 		for (const disposable of this.disposables) {
 			disposable.dispose();

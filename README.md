@@ -1,6 +1,6 @@
-# Temporary Chat
+# Only Chat
 
-Temporary Chat provides an on-demand AI chat panel for VS Code. Conversations are saved in the extension's local state and remain available after the panel is closed.
+Only Chat provides a focused AI chat panel for VS Code. Conversations are saved in the extension's local state and remain available after the panel is closed.
 
 ## Features
 
@@ -14,7 +14,7 @@ Temporary Chat provides an on-demand AI chat panel for VS Code. Conversations ar
 ## Usage
 
 1. Install, sign in to, and authorize an extension that provides a language model, such as GitHub Copilot.
-2. Use the keyboard shortcut or run `Temporary Chat: Open Temporary AI Chat` from the Command Palette.
+2. Use the keyboard shortcut or run `Only Chat: Open Chat` from the Command Palette.
 3. Select the language model to use below the message input.
 4. Type a message and press `Enter` to send it. Use `Shift+Enter` to insert a new line.
 5. Use the history and new conversation buttons to manage conversations. Use the settings button to configure the prompt.
@@ -23,7 +23,7 @@ VS Code may ask for permission to access language models when the first request 
 
 ## Settings
 
-- `temporaryChat.prompt`: The prompt used for temporary conversations.
+- `onlyChat.prompt`: The prompt used for conversations.
 
 ## Development
 

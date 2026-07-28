@@ -1,16 +1,16 @@
 {
-  "name": "temporary-chat",
-  "displayName": "Temporary Chat",
-  "description": "Open a temporary AI chat panel",
-  "version": "1.0.1",
+  "name": "only-chat",
+  "displayName": "Only Chat",
+  "description": "A focused AI chat panel for VS Code",
+  "version": "1.0.2",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
   "repository": {
     "type": "github",
-    "url": "https://github.com/huanent/vscode-temporary-chat"
+    "url": "https://github.com/huanent/vscode-only-chat"
   },
-  "homepage": "https://github.com/huanent/vscode-temporary-chat",
+  "homepage": "https://github.com/huanent/vscode-only-chat",
   "engines": {
     "vscode": "^1.125.0"
   },
@@ -22,11 +22,11 @@
   "contributes": {
     "customEditors": [
       {
-        "viewType": "temporaryChat.editor",
-        "displayName": "Temporary Chat",
+        "viewType": "onlyChat.editor",
+        "displayName": "Only Chat",
         "selector": [
           {
-            "filenamePattern": "*.temporary-chat"
+            "filenamePattern": "*.only-chat"
           }
         ],
         "priority": "option"
@@ -34,36 +34,36 @@
     ],
     "commands": [
       {
-        "command": "temporaryChat.open",
-        "title": "Open Temporary AI Chat",
-        "category": "Temporary Chat"
+        "command": "onlyChat.open",
+        "title": "Open Chat",
+        "category": "Only Chat"
       },
       {
-        "command": "temporaryChat.newConversation",
+        "command": "onlyChat.newConversation",
         "title": "New Chat",
-        "category": "Temporary Chat"
+        "category": "Only Chat"
       }
     ],
     "keybindings": [
       {
-        "command": "temporaryChat.open",
+        "command": "onlyChat.open",
         "key": "ctrl+alt+i",
         "mac": "cmd+alt+i"
       },
       {
-        "command": "temporaryChat.newConversation",
+        "command": "onlyChat.newConversation",
         "key": "ctrl+n",
         "mac": "cmd+n",
-        "when": "activeCustomEditorId == temporaryChat.editor"
+        "when": "activeCustomEditorId == onlyChat.editor"
       }
     ],
     "configuration": {
-      "title": "Temporary Chat",
+      "title": "Only Chat",
       "properties": {
-        "temporaryChat.prompt": {
+        "onlyChat.prompt": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The prompt used for temporary conversations.",
+          "markdownDescription": "The prompt used for conversations.",
           "scope": "window"
         }
       }
@@ -71,7 +71,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "rimraf out && tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "vscode-test",
@@ -83,6 +83,7 @@
     "@types/vscode": "^1.125.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
+    "rimraf": "^6.0.1",
     "typescript": "^7.0.2"
   },
   "overrides": {

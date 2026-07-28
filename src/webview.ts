@@ -372,6 +372,12 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				setActiveMessageAnchor(messageItems[0]);
 				return;
 			}
+			const distanceFromBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+			if (distanceFromBottom <= 1) {
+				anchoredMessage = undefined;
+				setActiveMessageAnchor(messageItems[messageItems.length - 1]);
+				return;
+			}
 			if (anchoredMessage?.isConnected) {
 				setActiveMessageAnchor(anchoredMessage);
 				return;
