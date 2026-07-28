@@ -15,6 +15,7 @@ import { getWebviewHtml } from './webview';
 
 type WebviewMessage =
 	| { type: 'ready' }
+	| { type: 'focusChanged'; focused: boolean }
 	| { type: 'send'; text: string; modelId: string; editMessageIndex?: number }
 	| { type: 'selectModel'; modelId: string }
 	| { type: 'newConversation' }
@@ -33,13 +34,13 @@ const currentConversationStorageKey = 'onlyChat.currentConversationId';
 const legacySelectedModelStorageKey = 'temporaryChat.selectedModelId';
 const legacyConversationStorageKey = 'temporaryChat.conversation';
 const legacyConversationsStorageKey = 'temporaryChat.conversations';
-const legacyCurrentConversationStorageKey = 'temporaryChat.currentConversationId';
+const webviewFocusContextKey = 'onlyChat.webviewFocus';
 
 export function registerOnlyChat(context: vscode.ExtensionContext) {
 	const editorProvider = new OnlyChatEditorProvider(context);
 	context.subscriptions.push(
-		vscode.commands.registerCommand(commandId, () => OnlyChatPanel.show(context)),
-		vscode.commands.registerCommand(newConversationCommandId, () => OnlyChatPanel.startNewConversation(context)),
+		vscode.commands.registerCommand(commandId, () => OnlyChatPanel.show()),
+		vscode.commands.registerCommand(newConversationCommandId, () => OnlyChatPanel.startNewConversation()),
 		vscode.commands.registerCommand(newTabCommandId, () => OnlyChatPanel.openNewTab()),
 		vscode.window.registerCustomEditorProvider(editorViewType, editorProvider, {
 			webviewOptions: { retainContextWhenHidden: true },
@@ -95,23 +96,23 @@ class OnlyChatPanel {
 	private modelsVersion = 0;
 	private readonly summaryCancellations = new Map<string, vscode.CancellationTokenSource>();
 
-	static async show(context: vscode.ExtensionContext) {
+	static async show() {
 		if (OnlyChatPanel.current) {
+			await OnlyChatPanel.current.newConversation();
 			OnlyChatPanel.current.panel.reveal(vscode.ViewColumn.Active);
 			return;
 		}
-		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(false), editorViewType, {
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(), editorViewType, {
 			viewColumn: vscode.ViewColumn.Active,
 		});
 	}
 
-	static async startNewConversation(context: vscode.ExtensionContext) {
-		await OnlyChatPanel.show(context);
-		await OnlyChatPanel.current?.newConversation();
+	static async startNewConversation() {
+		await OnlyChatPanel.show();
 	}
 
 	static async openNewTab() {
-		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(true), editorViewType, {
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(), editorViewType, {
 			viewColumn: vscode.ViewColumn.Active,
 		});
 	}
@@ -123,16 +124,13 @@ class OnlyChatPanel {
 	static async replaceSplitEditor(panel: vscode.WebviewPanel) {
 		const viewColumn = panel.viewColumn ?? vscode.ViewColumn.Active;
 		panel.dispose();
-		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(true), editorViewType, {
+		await vscode.commands.executeCommand('vscode.openWith', this.createEditorUri(), editorViewType, {
 			viewColumn,
 		});
 	}
 
-	private static createEditorUri(newConversation: boolean) {
+	private static createEditorUri() {
 		const query = new URLSearchParams({ id: randomUUID() });
-		if (newConversation) {
-			query.set('new', '1');
-		}
 		return vscode.Uri.from({
 			scheme: 'only-chat',
 			path: '/New conversation',
@@ -154,12 +152,7 @@ class OnlyChatPanel {
 		this.panel = panel;
 		this.context = context;
 		this.document = document;
-		this.currentConversationId = new URLSearchParams(document.uri.query).get('new') === '1'
-			? randomUUID()
-			: context.globalState.get<string>(currentConversationStorageKey)
-				?? context.globalState.get<string>(legacyCurrentConversationStorageKey)
-				?? document.conversations[0]?.id
-				?? randomUUID();
+		this.currentConversationId = randomUUID();
 		this.panel.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [context.extensionUri],
@@ -173,6 +166,8 @@ class OnlyChatPanel {
 		this.panel.onDidChangeViewState(event => {
 			if (event.webviewPanel.active) {
 				OnlyChatPanel.current = this;
+			} else {
+				void this.setWebviewFocus(false);
 			}
 		}, undefined, this.disposables);
 		this.panel.webview.onDidReceiveMessage(
@@ -192,6 +187,9 @@ class OnlyChatPanel {
 		switch (message.type) {
 			case 'ready':
 				await Promise.all([this.loadModels(), this.renderConversations()]);
+				break;
+			case 'focusChanged':
+				await this.setWebviewFocus(message.focused);
 				break;
 			case 'send':
 				await this.send(message.text, message.modelId, message.editMessageIndex);
@@ -215,6 +213,10 @@ class OnlyChatPanel {
 				await vscode.commands.executeCommand('workbench.action.openSettings', 'onlyChat.prompt');
 				break;
 		}
+	}
+
+	private setWebviewFocus(focused: boolean) {
+		return vscode.commands.executeCommand('setContext', webviewFocusContextKey, focused && this.panel.active);
 	}
 
 	private getConversationItems() {
@@ -524,6 +526,7 @@ class OnlyChatPanel {
 	}
 
 	private dispose() {
+		void this.setWebviewFocus(false);
 		this.cancel();
 		for (const cancellation of this.summaryCancellations.values()) {
 			cancellation.cancel();

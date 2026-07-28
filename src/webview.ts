@@ -692,7 +692,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		messages.addEventListener('wheel', () => { anchoredMessage = undefined; }, { passive: true });
 		messages.addEventListener('touchmove', () => { anchoredMessage = undefined; }, { passive: true });
 		messages.addEventListener('scroll', updateActiveMessageAnchor, { passive: true });
+		window.addEventListener('focus', () => vscode.postMessage({ type: 'focusChanged', focused: true }));
+		window.addEventListener('blur', () => vscode.postMessage({ type: 'focusChanged', focused: false }));
 		vscode.postMessage({ type: 'ready' });
+		vscode.postMessage({ type: 'focusChanged', focused: document.hasFocus() });
 
 		window.addEventListener('message', event => {
 			const message = event.data;
