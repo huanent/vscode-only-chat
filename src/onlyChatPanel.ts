@@ -407,6 +407,8 @@ class OnlyChatPanel {
 				: vscode.LanguageModelChatMessage.Assistant(message.content)),
 			vscode.LanguageModelChatMessage.User(userText),
 		];
+		let answer = '';
+		let modelName = '';
 
 		try {
 			const models = await this.getModels();
@@ -418,9 +420,9 @@ class OnlyChatPanel {
 			const summaryPromise = !conversation || editMessageIndex === 0
 				? this.generateSummary(model, userText, conversationId)
 				: undefined;
-			await this.panel.webview.postMessage({ type: 'started', model: model.name });
+			modelName = model.name;
+			await this.panel.webview.postMessage({ type: 'started', model: modelName });
 			const response = await model.sendRequest(requestMessages, {}, cancellation.token);
-			let answer = '';
 			for await (const chunk of response.text) {
 				answer += chunk;
 				await this.panel.webview.postMessage({ type: 'chunk', text: chunk });
@@ -434,7 +436,7 @@ class OnlyChatPanel {
 			};
 			updatedConversation.messages.push(
 				{ role: 'user', content: userText },
-				{ role: 'assistant', content: answer, model: model.name },
+				{ role: 'assistant', content: answer, model: modelName },
 			);
 			updatedConversation.updatedAt = Date.now();
 			if (!conversation) {
@@ -452,7 +454,26 @@ class OnlyChatPanel {
 		} catch (error) {
 			this.cancelSummary(conversationId);
 			if (error instanceof vscode.CancellationError || cancellation.token.isCancellationRequested) {
+				const updatedConversation = conversation ?? {
+					id: conversationId,
+					summary: createSummary(userText),
+					updatedAt: Date.now(),
+					messages: [],
+				};
+				updatedConversation.messages.push({ role: 'user', content: userText });
+				if (answer) {
+					updatedConversation.messages.push({ role: 'assistant', content: answer, model: modelName });
+				}
+				updatedConversation.updatedAt = Date.now();
+				if (!conversation) {
+					this.document.conversations.push(updatedConversation);
+				}
+				await this.persistConversations();
 				await this.panel.webview.postMessage({ type: 'cancelled' });
+				await Promise.all([
+					this.renderConversations(),
+					this.refreshConversationHistory(),
+				]);
 			} else {
 				const message = error instanceof Error ? error.message : String(error);
 				await this.panel.webview.postMessage({ type: 'error', message });
