@@ -57,8 +57,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.empty-title { margin: 0; font-size: 18px; font-weight: 600; }
 		.empty-description { max-width: 420px; margin: 7px 0 0; color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.5; }
 		.message { display: flex; padding: 12px 0; }
-		.message-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
-		.message-content { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
+		.message-body { min-width: 0; max-width: 100%; display: flex; flex-direction: column; align-items: flex-start; }
+		.message-content { min-width: 0; max-width: 100%; line-height: 1.6; overflow-wrap: anywhere; }
 		.message-content > :first-child { margin-top: 0; }
 		.message-content > :last-child { margin-bottom: 0; }
 		.message-content p, .message-content ul, .message-content ol, .message-content blockquote, .message-content pre { margin: 0 0 10px; }
@@ -87,7 +87,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.message-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 		.assistant { justify-content: flex-start; }
 		.user { justify-content: flex-end; }
-		.user .message-body { max-width: 82%; align-items: flex-end; }
+		.user .message-body { align-items: flex-end; }
 		.user .message-content { max-width: 82%; justify-self: end; padding: 7px 10px; border: 1px solid var(--vscode-chat-requestBorder, var(--vscode-contrastBorder, var(--vscode-panel-border))); border-radius: 4px; background: var(--vscode-chat-requestBackground, var(--vscode-input-background, rgba(127, 127, 127, .12))); }
 		.user .message-content { max-width: 100%; }
 		.user.editing .message-content { border-color: var(--vscode-focusBorder); box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
@@ -604,7 +604,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (value) setModelMenuVisible(false);
 			sendButton.title = value ? 'Stop generating' : 'Send';
 			sendButton.setAttribute('aria-label', value ? 'Stop generating' : 'Send');
-			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-primitive-square' : 'codicon-send');
+			sendButton.firstElementChild.className = 'codicon ' + (value ? 'codicon-debug-stop' : 'codicon-send');
 			input.focus();
 		}
 
