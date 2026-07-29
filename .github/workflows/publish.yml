@@ -16,39 +16,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check version change
-        id: version
-        shell: bash
-        run: |
-          current_version=$(node -p "require('./package.json').version")
-          previous_version=$(git show "${{ github.event.before }}:package.json" 2>/dev/null | node -e "let input = ''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input).version));" || true)
-          echo "current=$current_version" >> "$GITHUB_OUTPUT"
-          if [[ -n "$previous_version" && "$current_version" != "$previous_version" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Set up Node.js
-        if: steps.version.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
       - name: Install dependencies
-        if: steps.version.outputs.changed == 'true'
         run: npm ci
 
       - name: Compile extension
-        if: steps.version.outputs.changed == 'true'
         run: npm run compile
 
-      - name: Publish version ${{ steps.version.outputs.current }}
-        if: steps.version.outputs.changed == 'true'
-        run: npm run publish -- --pat "$VSCE_PAT"
+      - name: Publish extension
+        run: npm run publish -- --skip-duplicate --pat "$VSCE_PAT"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
