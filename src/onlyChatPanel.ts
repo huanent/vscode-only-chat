@@ -21,8 +21,7 @@ type WebviewMessage =
 	| { type: 'newConversation' }
 	| { type: 'selectConversation'; conversationId: string }
 	| { type: 'deleteConversation'; conversationId: string }
-	| { type: 'cancel' }
-	| { type: 'openSettings' };
+	| { type: 'cancel' };
 
 const commandId = 'onlyChat.open';
 const newConversationCommandId = 'onlyChat.newConversation';
@@ -208,9 +207,6 @@ class OnlyChatPanel {
 				break;
 			case 'cancel':
 				this.cancel();
-				break;
-			case 'openSettings':
-				await vscode.commands.executeCommand('workbench.action.openSettings', 'onlyChat.prompt');
 				break;
 		}
 	}

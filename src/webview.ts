@@ -33,15 +33,14 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		button { cursor: pointer; }
 		button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 		button:disabled { cursor: default; opacity: .5; }
-		.app { position: relative; height: 100vh; padding:0 4px; display: grid; grid-template-rows: 36px minmax(0, 1fr); }
-		header { position: relative; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); }
-		.conversation-summary { position: absolute; left: 50%; width: calc(100% - 160px); overflow: hidden; font-size: 12px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; transform: translateX(-50%); }
-		.header-actions { z-index: 1; display: flex; align-items: center; gap: 2px; }
+		.app { position: relative; height: 100vh; padding: 0 4px; }
+		.top-actions { position: absolute; z-index: 3; top: 4px; left: 4px; display: flex; align-items: center; gap: 2px; }
 		.icon-button { width: 28px; height: 28px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.icon-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.icon-button .codicon { font-size: 16px; }
-		.workspace { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+		.workspace { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 		.chat-area { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
+		.chat-area::before { position: absolute; z-index: 1; top: 0; right: max(calc(var(--chat-gutter) + var(--scrollbar-offset)), calc((100% - var(--chat-max-width)) / 2)); left: max(var(--chat-gutter), calc((100% - var(--chat-max-width) - var(--scrollbar-offset) * 2) / 2)); height: 36px; background: linear-gradient(to bottom, var(--vscode-editor-background) 0%, color-mix(in srgb, var(--vscode-editor-background) 72%, transparent) 48%, transparent 100%); content: ""; pointer-events: none; }
 		.messages { width: calc(100% - var(--chat-gutter) * 2); max-width: calc(var(--chat-max-width) + var(--scrollbar-offset) * 2); min-height: 0; justify-self: center; overflow-y: auto; padding: 18px var(--scrollbar-offset) 28px; scroll-padding-bottom: 24px; }
 		.message-navigation { position: absolute; z-index: 2; top: 50%; left: max(4px, calc((100% - var(--chat-max-width)) / 2 - 24px)); max-height: min(55%, 360px); display: none; overflow-y: auto; padding: 4px 0; scrollbar-width: none; transform: translateY(-50%); }
 		.message-navigation::-webkit-scrollbar { display: none; }
@@ -175,14 +174,9 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 </head>
 <body>
 	<div class="app">
-		<header>
+		<div class="top-actions">
 			<button id="toggle-history" class="icon-button" title="Show conversation history" aria-label="Show conversation history" aria-controls="history-panel" aria-expanded="false"><span class="codicon codicon-menu" aria-hidden="true"></span></button>
-			<div id="conversation-summary" class="conversation-summary" title="New conversation">New conversation</div>
-			<div class="header-actions">
-				<button id="new-conversation" class="icon-button" title="New conversation" aria-label="New conversation"><span class="codicon codicon-add" aria-hidden="true"></span></button>
-				<button id="open-prompt-settings" class="icon-button" title="Prompt settings" aria-label="Open prompt settings"><span class="codicon codicon-settings-gear" aria-hidden="true"></span></button>
-			</div>
-		</header>
+		</div>
 		<div id="workspace" class="workspace">
 			<aside id="history-panel" class="history-panel" aria-label="Conversation history">
 				<div class="history-header">
@@ -248,7 +242,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const modelTriggerLabel = document.getElementById('model-trigger-label');
 		const modelMenu = document.getElementById('model-menu');
 		const sendButton = document.getElementById('send');
-		const conversationSummary = document.getElementById('conversation-summary');
 		const workspace = document.getElementById('workspace');
 		const toggleHistoryButton = document.getElementById('toggle-history');
 		const historyPanel = document.getElementById('history-panel');
@@ -693,8 +686,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				setModelMenuVisible(false);
 			}
 		});
-		document.getElementById('new-conversation').addEventListener('click', () => vscode.postMessage({ type: 'newConversation' }));
-		document.getElementById('open-prompt-settings').addEventListener('click', () => vscode.postMessage({ type: 'openSettings' }));
 		input.addEventListener('keydown', event => {
 			if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
 				event.preventDefault();
@@ -719,14 +710,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				currentConversationId = message.currentConversationId;
 				restoreConversation(message.messages, preserveScroll);
 				renderConversations(message.conversations);
-				conversationSummary.textContent = message.currentSummary;
-				conversationSummary.title = message.currentSummary;
 				setEditMode(undefined);
 				setBusy(false);
-			}
-			if (message.type === 'summaryChunk' && message.conversationId === currentConversationId) {
-				conversationSummary.textContent = message.summary;
-				conversationSummary.title = message.summary;
 			}
 			if (message.type === 'models') {
 				const preferredModelId = selectedModelId || message.selectedModelId;

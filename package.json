@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "A focused AI chat panel for VS Code",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -41,7 +41,8 @@
       {
         "command": "onlyChat.newConversation",
         "title": "New Chat",
-        "category": "Only Chat"
+        "category": "Only Chat",
+        "icon": "$(add)"
       },
       {
         "command": "onlyChat.newTab",
@@ -49,6 +50,15 @@
         "category": "Only Chat"
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "onlyChat.newConversation",
+          "when": "activeCustomEditorId == onlyChat.editor",
+          "group": "navigation"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "onlyChat.open",
