@@ -141,7 +141,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		.send-button { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--vscode-icon-foreground); background: transparent; }
 		.send-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground)); }
 		.send-button .codicon { font-size: 15px; }
-		.status { min-height: 15px; padding: 2px 1px 0; color: var(--vscode-descriptionForeground); font-size: 11px; }
 		.history-panel { position: absolute; z-index: 10; top: 42px; left: 8px; width: min(360px, calc(100% - 16px)); max-height: min(520px, calc(100vh - 54px)); display: none; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 8px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 8px 24px var(--vscode-widget-shadow); }
 		.history-visible .history-panel { display: grid; animation: reveal-history 120ms ease-out; transform-origin: top left; }
 		@keyframes reveal-history { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -222,7 +221,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 							<button id="send" class="send-button" title="Send" aria-label="Send"><span class="codicon codicon-send" aria-hidden="true"></span></button>
 						</div>
 					</div>
-					<div id="status" class="status" aria-live="polite"></div>
 				</section>
 			</div>
 		</div>
@@ -250,7 +248,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		const modelTriggerLabel = document.getElementById('model-trigger-label');
 		const modelMenu = document.getElementById('model-menu');
 		const sendButton = document.getElementById('send');
-		const status = document.getElementById('status');
 		const conversationSummary = document.getElementById('conversation-summary');
 		const workspace = document.getElementById('workspace');
 		const toggleHistoryButton = document.getElementById('toggle-history');
@@ -625,10 +622,8 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (messageIndex !== undefined) {
 				messages.querySelector('.message[data-message-index="' + messageIndex + '"]')?.classList.add('editing');
 				input.textContent = text;
-				status.textContent = 'Editing message';
 			} else {
 				input.replaceChildren();
-				status.textContent = '';
 			}
 		}
 
@@ -651,7 +646,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			input.replaceChildren();
 			setEditMode(undefined);
 			setBusy(true);
-			status.textContent = 'Connecting to model...';
 			vscode.postMessage({ type: 'send', text, modelId: selectedModelId, editMessageIndex: sendingEditMessageIndex });
 		}
 
@@ -737,9 +731,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 			if (message.type === 'models') {
 				const preferredModelId = selectedModelId || message.selectedModelId;
 				renderModels(message.models, preferredModelId);
-				if (message.models.length === 0) {
-					status.textContent = 'No language models are available';
-				}
 			}
 			if (message.type === 'modelsError') {
 				availableModels = [];
@@ -749,7 +740,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				modelTrigger.title = 'Failed to load models';
 				modelTrigger.disabled = true;
 				setModelMenuVisible(false);
-				status.textContent = 'Failed to load models: ' + message.message;
 			}
 			if (message.type === 'started') {
 				setMessageModel(assistantContent, message.model);
@@ -768,12 +758,10 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				assistantContent.classList.remove('loading');
 				assistantContent.closest('.message').classList.remove('pending');
 				anchorMessage(assistantContent.closest('.message'));
-				status.textContent = '';
 				setBusy(false);
 			}
 			if (message.type === 'cancelled') {
 				assistantContent.classList.remove('loading');
-				status.textContent = 'Generation stopped';
 				setBusy(false);
 			}
 			if (message.type === 'error') {
@@ -781,7 +769,6 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 				const errorText = 'Request failed: ' + message.message;
 				assistantContent.dataset.messageText = errorText;
 				assistantContent.textContent = errorText;
-				status.textContent = '';
 				setBusy(false);
 			}
 		});
