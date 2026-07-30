@@ -1,7 +1,7 @@
 export type WebviewMessage =
 	| { type: 'ready' }
 	| { type: 'focusChanged'; focused: boolean }
-	| { type: 'send'; text: string; modelId: string; editMessageIndex?: number }
+	| { type: 'send'; requestId: string; text: string; modelId: string; editMessageIndex?: number }
 	| { type: 'selectModel'; modelId: string }
 	| { type: 'newConversation' }
 	| { type: 'selectConversation'; conversationId: string }

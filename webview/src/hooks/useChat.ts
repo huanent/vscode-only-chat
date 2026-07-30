@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { postMessage } from '../services/vscode';
 import type { ConversationItem, InboundMessage, ModelItem, StoredMessage } from '../types';
 
+type PendingRequest = {
+	requestId: string;
+	text: string;
+	modelId: string;
+	editMessageIndex?: number;
+	assistantIndex: number;
+};
+
 export function useChat() {
 	const [messages, setMessages] = useState<StoredMessage[]>([]);
 	const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -14,7 +22,7 @@ export function useChat() {
 	const [input, setInput] = useState('');
 	const [editingIndex, setEditingIndex] = useState<number>();
 	const [busy, setBusy] = useState(false);
-	const assistantIndexRef = useRef<number | undefined>(undefined);
+	const pendingRequestRef = useRef<PendingRequest | undefined>(undefined);
 	const inputRef = useRef<HTMLDivElement>(null);
 	const historyButtonRef = useRef<HTMLButtonElement>(null);
 	const historyPanelRef = useRef<HTMLElement>(null);
@@ -28,6 +36,7 @@ export function useChat() {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent<InboundMessage>) => {
 			const message = event.data;
+			const pendingRequest = pendingRequestRef.current;
 			switch (message.type) {
 				case 'conversationHistory':
 					setConversations(message.conversations);
@@ -38,7 +47,7 @@ export function useChat() {
 					setConversations(message.conversations);
 					setEditingIndex(undefined);
 					setBusy(false);
-					assistantIndexRef.current = undefined;
+					pendingRequestRef.current = undefined;
 					return;
 				case 'models': {
 					setModels(message.models);
@@ -54,17 +63,27 @@ export function useChat() {
 					setModelsError(true);
 					return;
 				case 'started':
-					setMessages(current => updateAssistant(current, assistantIndexRef.current, item => ({ ...item, model: message.model })));
+					if (message.requestId !== pendingRequest?.requestId) return;
+					setMessages(current => updateAssistant(current, pendingRequest.assistantIndex, item => ({ ...item, model: message.model })));
 					return;
 				case 'chunk':
-					setMessages(current => updateAssistant(current, assistantIndexRef.current, item => ({ ...item, content: item.content + message.text })));
+					if (message.requestId !== pendingRequest?.requestId) return;
+					setMessages(current => updateAssistant(current, pendingRequest.assistantIndex, item => ({ ...item, content: item.content + message.text })));
 					return;
 				case 'completed':
 				case 'cancelled':
+					if (message.requestId !== pendingRequest?.requestId) return;
 					setBusy(false);
+					pendingRequestRef.current = undefined;
 					return;
 				case 'error':
-					setMessages(current => updateAssistant(current, assistantIndexRef.current, item => ({ ...item, content: `Request failed: ${message.message}` })));
+					if (!pendingRequest || (message.requestId && message.requestId !== pendingRequest.requestId)) return;
+					if (message.retryWithoutEdit) pendingRequest.editMessageIndex = undefined;
+					setMessages(current => updateAssistant(current, pendingRequest.assistantIndex, item => ({
+						...item,
+						error: message.message,
+						errorDetails: message.details,
+					})));
 					setBusy(false);
 					return;
 				case 'summaryChunk':
@@ -122,6 +141,19 @@ export function useChat() {
 		postMessage({ type: 'selectModel', modelId });
 	};
 
+	const startRequest = (request: Omit<PendingRequest, 'requestId'>) => {
+		const pendingRequest = { ...request, requestId: crypto.randomUUID() };
+		pendingRequestRef.current = pendingRequest;
+		setBusy(true);
+		postMessage({
+			type: 'send',
+			requestId: pendingRequest.requestId,
+			text: pendingRequest.text,
+			modelId: pendingRequest.modelId,
+			editMessageIndex: pendingRequest.editMessageIndex,
+		});
+	};
+
 	const send = () => {
 		if (busy) {
 			postMessage({ type: 'cancel' });
@@ -131,12 +163,27 @@ export function useChat() {
 		if (!text || !selectedModelId) return;
 		const nextMessages = editingIndex === undefined ? [...messages] : messages.slice(0, editingIndex);
 		nextMessages.push({ role: 'user', content: text }, { role: 'assistant', content: '' });
-		assistantIndexRef.current = nextMessages.length - 1;
 		setMessages(nextMessages);
 		setInput('');
-		setBusy(true);
-		postMessage({ type: 'send', text, modelId: selectedModelId, editMessageIndex: editingIndex });
+		startRequest({ text, modelId: selectedModelId, editMessageIndex: editingIndex, assistantIndex: nextMessages.length - 1 });
 		setEditingIndex(undefined);
+	};
+
+	const retry = (assistantIndex: number) => {
+		const failedRequest = pendingRequestRef.current;
+		if (busy || !failedRequest || failedRequest.assistantIndex !== assistantIndex) return;
+		setMessages(current => updateAssistant(current, assistantIndex, item => ({
+			...item,
+			content: '',
+			error: undefined,
+			errorDetails: undefined,
+		})));
+		startRequest({
+			text: failedRequest.text,
+			modelId: failedRequest.modelId,
+			editMessageIndex: failedRequest.editMessageIndex,
+			assistantIndex,
+		});
 	};
 
 	const editMessage = (index: number, text: string) => {
@@ -172,6 +219,7 @@ export function useChat() {
 		selectConversation,
 		deleteConversation: (conversationId: string) => postMessage({ type: 'deleteConversation', conversationId }),
 		editMessage,
+		retry,
 		send,
 	};
 }

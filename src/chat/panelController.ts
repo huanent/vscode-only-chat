@@ -81,7 +81,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 					await this.setWebviewFocus(message.focused);
 					return;
 				case 'send':
-					await this.send(message.text, message.modelId, message.editMessageIndex);
+					await this.send(message.requestId, message.text, message.modelId, message.editMessageIndex);
 					return;
 				case 'selectModel':
 					await this.context.globalState.update(storageKeys.selectedModel, message.modelId);
@@ -211,7 +211,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		}
 	}
 
-	private async send(text: string, modelId: string, editMessageIndex?: number): Promise<void> {
+	private async send(requestId: string, text: string, modelId: string, editMessageIndex?: number): Promise<void> {
 		const userText = text.trim();
 		if (!userText) {
 			return;
@@ -219,6 +219,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		if (this.cancellation) {
 			await this.panel.webview.postMessage({
 				type: 'error',
+				requestId,
 				message: 'The previous request is still stopping. Please try again shortly.',
 			});
 			return;
@@ -230,6 +231,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			&& (!conversation || !Number.isInteger(editMessageIndex) || conversation.messages[editMessageIndex]?.role !== 'user')) {
 			await this.panel.webview.postMessage({
 				type: 'error',
+				requestId,
 				message: 'The message being edited is no longer available.',
 			});
 			return;
@@ -237,8 +239,10 @@ export class OnlyChatPanelController implements vscode.Disposable {
 
 		const cancellation = new vscode.CancellationTokenSource();
 		this.cancellation = cancellation;
+		let editApplied = false;
 		if (conversation && editMessageIndex !== undefined) {
 			conversation.messages.splice(editMessageIndex);
+			editApplied = true;
 			conversation.updatedAt = Date.now();
 			if (editMessageIndex === 0) {
 				conversation.summary = createSummary(userText);
@@ -273,11 +277,11 @@ export class OnlyChatPanelController implements vscode.Disposable {
 				? this.generateSummary(model, userText, conversationId)
 				: undefined;
 			modelName = model.name;
-			await this.panel.webview.postMessage({ type: 'started', model: modelName });
+			await this.panel.webview.postMessage({ type: 'started', requestId, model: modelName });
 			const response = await model.sendRequest(requestMessages, {}, cancellation.token);
 			for await (const chunk of response.text) {
 				answer += chunk;
-				await this.panel.webview.postMessage({ type: 'chunk', text: chunk });
+				await this.panel.webview.postMessage({ type: 'chunk', requestId, text: chunk });
 			}
 
 			const updatedConversation = conversation ?? createStoredConversation(conversationId, userText);
@@ -290,7 +294,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 				this.document.conversations.push(updatedConversation);
 			}
 			await this.manager.persist(this.currentConversationId);
-			await this.panel.webview.postMessage({ type: 'completed' });
+			await this.panel.webview.postMessage({ type: 'completed', requestId });
 			await Promise.all([this.renderConversations(), this.refreshConversationHistory()]);
 			if (summaryPromise) {
 				void summaryPromise.then(summary => this.applyGeneratedSummary(conversationId, summary));
@@ -308,12 +312,16 @@ export class OnlyChatPanelController implements vscode.Disposable {
 					this.document.conversations.push(updatedConversation);
 				}
 				await this.manager.persist(this.currentConversationId);
-				await this.panel.webview.postMessage({ type: 'cancelled' });
+				await this.panel.webview.postMessage({ type: 'cancelled', requestId });
 				await Promise.all([this.renderConversations(), this.refreshConversationHistory()]);
 			} else {
+				const errorDetails = describeError(error);
 				await this.panel.webview.postMessage({
 					type: 'error',
-					message: error instanceof Error ? error.message : String(error),
+					requestId,
+					message: errorDetails.message,
+					details: errorDetails.details,
+					retryWithoutEdit: editApplied,
 				});
 			}
 		} finally {
@@ -391,4 +399,55 @@ function createStoredConversation(id: string, userText: string): StoredConversat
 		updatedAt: Date.now(),
 		messages: [],
 	};
+}
+
+function describeError(error: unknown): { message: string; details?: string } {
+	const message = getErrorMessage(error);
+	const details = collectErrorDetails(error)
+		.filter(detail => detail !== message)
+		.join('\n');
+	return {
+		message,
+		details: details || 'The model provider did not return any additional error details.',
+	};
+}
+
+function collectErrorDetails(error: unknown, seen = new Set<unknown>()): string[] {
+	if (error === null || error === undefined || seen.has(error)) {
+		return [];
+	}
+	if (typeof error !== 'object') {
+		return [String(error)];
+	}
+	seen.add(error);
+	const details: string[] = [];
+	if (error instanceof vscode.LanguageModelError) {
+		details.push(`Language model error code: ${error.code}`);
+	}
+	const record = error as Record<string, unknown>;
+	for (const [label, key] of [['Error code', 'code'], ['HTTP status', 'status'], ['HTTP status', 'statusCode']] as const) {
+		const value = record[key];
+		if ((typeof value === 'string' || typeof value === 'number') && String(value) !== '') {
+			details.push(`${label}: ${value}`);
+		}
+	}
+	const errorMessage = getErrorMessage(error);
+	if (errorMessage) {
+		details.push(errorMessage);
+	}
+	details.push(...collectErrorDetails(record.cause, seen));
+	return [...new Set(details)];
+}
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error && error.message.trim()) {
+		return error.message.trim();
+	}
+	if (typeof error === 'object' && error !== null) {
+		const message = (error as Record<string, unknown>).message;
+		if (typeof message === 'string' && message.trim()) {
+			return message.trim();
+		}
+	}
+	return String(error);
 }

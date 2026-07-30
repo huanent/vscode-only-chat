@@ -26,7 +26,7 @@ export function App() {
 				/>
 			)}
 			<div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]">
-				<MessageList messages={chat.messages} busy={chat.busy} editingIndex={chat.editingIndex} onEdit={chat.editMessage} />
+				<MessageList messages={chat.messages} busy={chat.busy} editingIndex={chat.editingIndex} onEdit={chat.editMessage} onRetry={chat.retry} />
 				<ChatInput
 					inputRef={chat.inputRef}
 					input={chat.input}

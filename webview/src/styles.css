@@ -23,6 +23,9 @@
 	--color-widget-border: var(--vscode-widget-border, var(--vscode-panel-border));
 	--color-user-message: var(--vscode-chat-requestBackground, var(--vscode-input-background));
 	--color-user-message-border: var(--vscode-chat-requestBorder, var(--vscode-panel-border));
+	--color-error: var(--vscode-inputValidation-errorBackground, var(--vscode-input-background));
+	--color-error-border: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+	--color-error-foreground: var(--vscode-errorForeground);
 	--color-code: var(--vscode-textCodeBlock-background);
 	--color-code-foreground: var(--vscode-textPreformat-foreground);
 	--color-link: var(--vscode-textLink-foreground);

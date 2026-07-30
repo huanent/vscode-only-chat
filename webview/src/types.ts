@@ -2,6 +2,8 @@ export type StoredMessage = {
 	role: 'user' | 'assistant';
 	content: string;
 	model?: string;
+	error?: string;
+	errorDetails?: string;
 };
 
 export type ConversationItem = {
@@ -27,9 +29,9 @@ export type InboundMessage =
 	}
 	| { type: 'models'; selectedModelId?: string; models: ModelItem[] }
 	| { type: 'modelsError'; message: string }
-	| { type: 'started'; model: string }
-	| { type: 'chunk'; text: string }
-	| { type: 'completed' }
-	| { type: 'cancelled' }
-	| { type: 'error'; message: string }
+	| { type: 'started'; requestId: string; model: string }
+	| { type: 'chunk'; requestId: string; text: string }
+	| { type: 'completed'; requestId: string }
+	| { type: 'cancelled'; requestId: string }
+	| { type: 'error'; requestId?: string; message: string; details?: string; retryWithoutEdit?: boolean }
 	| { type: 'summaryChunk'; conversationId: string; summary: string };
