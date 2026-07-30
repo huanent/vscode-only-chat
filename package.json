@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "A focused AI chat panel for VS Code",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -10,6 +10,9 @@
     "type": "github",
     "url": "https://github.com/huanent/vscode-only-chat"
   },
+  "extensionKind": [
+    "ui"
+  ],
   "homepage": "https://github.com/huanent/vscode-only-chat",
   "engines": {
     "vscode": "^1.125.0"
