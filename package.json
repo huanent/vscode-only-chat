@@ -91,29 +91,39 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run build",
+    "build": "npm run compile && npm run compile:webview",
     "compile": "rimraf out && tsc -p ./",
+    "compile:webview": "tsc -p webview/tsconfig.json && vite build",
     "watch": "tsc -watch -p ./",
     "publish": "vsce publish",
     "package": "vsce package"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "24.x",
+    "@types/prismjs": "^1.26.6",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.125.0",
-    "@vscode/vsce": "^3.9.2",
-    "rimraf": "^6.0.1",
-    "typescript": "^7.0.2"
-  },
-  "overrides": {
-    "diff": "^8.0.4",
-    "serialize-javascript": "^7.0.6"
-  },
-  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
     "@vscode/codicons": "^0.0.46-24",
+    "@vscode/vsce": "^3.9.2",
     "dompurify": "^3.4.12",
     "katex": "^0.18.1",
     "markdown-it": "^14.3.0",
     "markdown-it-texmath": "^1.0.0",
-    "prismjs": "^1.30.0"
+    "prismjs": "^1.30.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
   }
 }

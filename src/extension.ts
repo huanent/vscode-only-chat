@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
-import { registerOnlyChat } from './onlyChatPanel';
+import { OnlyChatManager } from './chat/manager';
 
-export function activate(context: vscode.ExtensionContext) {
-	registerOnlyChat(context);
+export function activate(context: vscode.ExtensionContext): void {
+	const manager = new OnlyChatManager(context);
+	manager.register();
+	context.subscriptions.push(manager);
 }
 
-export function deactivate() { }
+export function deactivate(): void { }

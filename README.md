@@ -35,5 +35,5 @@ VS Code may request permission to access language models when you send the first
 
 ```bash
 npm install
-npm run compile
+npm run build
 ```
