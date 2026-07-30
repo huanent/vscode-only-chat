@@ -11,7 +11,7 @@ export function MessageAnchors({ messages, indexes, activeIndex, onSelect }: Mes
 	if (indexes.length <= 1) return null;
 
 	return (
-		<nav className="absolute top-1/2 -left-5 z-20 flex max-h-[calc(100%-56px)] w-4 -translate-y-1/2 flex-col items-center gap-0.5 overflow-y-auto py-1 [scrollbar-width:none] max-[620px]:-left-2.5 [&::-webkit-scrollbar]:hidden" aria-label="Message anchors">
+		<nav className="absolute top-1/2 -left-5 z-20 flex max-h-[calc(100%-56px)] w-4 -translate-y-1/2 flex-col items-center gap-0.5 overflow-y-auto py-1 scrollbar-none max-[620px]:-left-2.5 [&::-webkit-scrollbar]:hidden" aria-label="Message anchors">
 			{indexes.map((messageIndex, anchorIndex) => {
 				const message = messages[messageIndex];
 				const active = messageIndex === activeIndex;

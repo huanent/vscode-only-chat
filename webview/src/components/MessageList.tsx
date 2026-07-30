@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { StoredMessage } from '../types';
 import { useMessageNavigation } from '../hooks/useMessageNavigation';
 import { MarkdownContent } from './MarkdownContent';
@@ -12,6 +13,17 @@ type MessageListProps = {
 
 export function MessageList({ messages, busy, editingIndex, onEdit }: MessageListProps) {
 	const navigation = useMessageNavigation(messages);
+	const [copiedIndex, setCopiedIndex] = useState<number>();
+	const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+	useEffect(() => () => clearTimeout(copyFeedbackTimerRef.current), []);
+
+	const copyMessage = async (index: number, content: string) => {
+		await navigator.clipboard.writeText(content);
+		clearTimeout(copyFeedbackTimerRef.current);
+		setCopiedIndex(index);
+		copyFeedbackTimerRef.current = setTimeout(() => setCopiedIndex(undefined), 1500);
+	};
 
 	return (
 		<div className="relative min-h-0 w-[calc(100%-40px)] max-w-210 justify-self-center max-[620px]:w-[calc(100%-20px)]">
@@ -46,8 +58,8 @@ export function MessageList({ messages, busy, editingIndex, onEdit }: MessageLis
 											<span className="codicon codicon-edit" aria-hidden="true" />
 										</button>
 									)}
-									<button className={messageActionClass} title="Copy message" aria-label="Copy message" onClick={() => navigator.clipboard.writeText(message.content)}>
-										<span className="codicon codicon-copy" aria-hidden="true" />
+									<button className={messageActionClass} title={copiedIndex === index ? 'Copied' : 'Copy message'} aria-label={copiedIndex === index ? 'Copied' : 'Copy message'} onClick={() => void copyMessage(index, message.content)}>
+										<span className={`codicon ${copiedIndex === index ? 'codicon-check' : 'codicon-copy'}`} aria-hidden="true" />
 									</button>
 									{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={message.model}>{message.model}</span>}
 								</div>
