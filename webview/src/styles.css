@@ -91,17 +91,30 @@
 	mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
 }
 
-.markdown-content.loading {
-	width: 32px;
+.message-loading {
+	display: flex;
+	align-items: center;
+	gap: 5px;
 	height: 24px;
-	background: radial-gradient(circle, var(--color-muted) 2px, transparent 2.5px) center / 12px 12px no-repeat;
-	animation: pulse 900ms ease-in-out infinite;
+	padding: 0 3px;
 }
 
-@keyframes pulse {
-	50% { opacity: .35; }
+.message-loading span {
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--color-muted);
+	animation: loading-dot 1.2s ease-in-out infinite;
+}
+
+.message-loading span:nth-child(2) { animation-delay: 120ms; }
+.message-loading span:nth-child(3) { animation-delay: 240ms; }
+
+@keyframes loading-dot {
+	0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+	30% { opacity: 1; transform: translateY(-3px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.markdown-content.loading { animation: none; }
+	.message-loading span { animation: none; opacity: .65; }
 }

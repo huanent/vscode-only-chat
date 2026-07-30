@@ -1,6 +1,8 @@
+import type { Ref } from 'react';
 import type { ConversationItem } from '../types';
 
 type HistoryPanelProps = {
+	panelRef: Ref<HTMLElement>;
 	conversations: ConversationItem[];
 	currentConversationId?: string;
 	query: string;
@@ -11,6 +13,7 @@ type HistoryPanelProps = {
 };
 
 export function HistoryPanel({
+	panelRef,
 	conversations,
 	currentConversationId,
 	query,
@@ -25,7 +28,7 @@ export function HistoryPanel({
 		: conversations;
 
 	return (
-		<aside className="absolute top-11 left-2 z-15 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-widget-border bg-menu shadow-widget" aria-label="Conversation history">
+		<aside ref={panelRef} className="absolute top-11 left-2 z-115 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-widget-border bg-menu shadow-widget" aria-label="Conversation history">
 			<div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 border-b border-widget-border p-1.5">
 				<label className="grid h-8 min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center rounded border border-transparent bg-input px-2 text-input-foreground focus-within:border-focus">
 					<span className="codicon codicon-search text-sm text-muted" aria-hidden="true" />

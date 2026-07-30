@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useModelPicker } from '../hooks/useModelPicker';
 import type { ModelItem } from '../types';
 
 type ModelPickerProps = {
@@ -10,21 +10,8 @@ type ModelPickerProps = {
 };
 
 export function ModelPicker({ models, selectedModelId, disabled, error, onSelect }: ModelPickerProps) {
-	const [open, setOpen] = useState(false);
-	const rootRef = useRef<HTMLDivElement>(null);
+	const { open, setOpen, rootRef } = useModelPicker(disabled);
 	const selectedModel = models.find(model => model.id === selectedModelId);
-
-	useEffect(() => {
-		const close = (event: MouseEvent) => {
-			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-		};
-		document.addEventListener('mousedown', close);
-		return () => document.removeEventListener('mousedown', close);
-	}, []);
-
-	useEffect(() => {
-		if (disabled) setOpen(false);
-	}, [disabled]);
 
 	const label = error ? 'Failed to load models' : selectedModel?.name ?? (models.length ? 'Select model' : 'Loading models...');
 	const providers = new Map<string, ModelItem[]>();
