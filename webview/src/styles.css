@@ -47,6 +47,18 @@
 	pointer-events: none;
 }
 
+.message-list-fade {
+	position: absolute;
+	right: 0;
+	left: 0;
+	z-index: 10;
+	height: 24px;
+	pointer-events: none;
+	transition: opacity 100ms ease-out;
+}
+.message-list-fade-top { top: 0; background: linear-gradient(to bottom, var(--color-app), transparent); }
+.message-list-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--color-app), transparent); }
+
 .markdown-content > :first-child { margin-top: 0; }
 .markdown-content > :last-child { margin-bottom: 0; }
 .markdown-content p,
@@ -61,10 +73,23 @@
 .markdown-content pre { overflow-x: auto; padding: 10px; border-radius: 4px; background: var(--color-code); }
 .markdown-content pre code { padding: 0; background: transparent; }
 .markdown-content a { color: var(--color-link); }
+.markdown-content .markdown-overflow { max-width: 100%; overflow-x: auto; }
 .markdown-content table { width: max-content; min-width: 100%; border-collapse: collapse; }
 .markdown-content th,
 .markdown-content td { padding: 5px 8px; border: 1px solid var(--color-border); text-align: left; }
 .markdown-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.markdown-content :is(pre, .katex-display)[data-overflow-right="true"] {
+	-webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+	mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+}
+.markdown-content :is(pre, .katex-display)[data-overflow-left="true"] {
+	-webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 100%);
+	mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 100%);
+}
+.markdown-content :is(pre, .katex-display)[data-overflow-left="true"][data-overflow-right="true"] {
+	-webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+	mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+}
 
 .markdown-content.loading {
 	width: 32px;

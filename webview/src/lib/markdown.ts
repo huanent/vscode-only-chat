@@ -32,6 +32,9 @@ const markdown = new MarkdownIt({
 	katexOptions: { strict: 'ignore', throwOnError: false },
 });
 
+markdown.renderer.rules.table_open = () => '<div class="markdown-overflow"><table>';
+markdown.renderer.rules.table_close = () => '</table></div>';
+
 export function renderMarkdown(text: string): string {
 	return DOMPurify.sanitize(markdown.render(text));
 }
