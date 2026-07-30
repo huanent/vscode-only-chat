@@ -94,17 +94,12 @@
     "vscode:prepublish": "npm run compile",
     "compile": "rimraf out && tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile",
-    "test": "vscode-test",
     "publish": "vsce publish",
     "package": "vsce package"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
     "@types/vscode": "^1.125.0",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "^3.9.2",
     "rimraf": "^6.0.1",
     "typescript": "^7.0.2"
