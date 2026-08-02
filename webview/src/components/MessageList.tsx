@@ -9,10 +9,11 @@ type MessageListProps = {
 	busy: boolean;
 	editingIndex?: number;
 	onEdit(index: number, text: string): void;
+	onRegenerate(index: number): void;
 	onRetry(index: number): void;
 };
 
-export function MessageList({ messages, busy, editingIndex, onEdit, onRetry }: MessageListProps) {
+export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate, onRetry }: MessageListProps) {
 	const navigation = useMessageNavigation(messages);
 	const [copiedIndex, setCopiedIndex] = useState<number>();
 	const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -70,6 +71,11 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRetry }: M
 									{message.role === 'user' && (
 										<button className={messageActionClass} disabled={busy} title="Edit message" aria-label="Edit message" onClick={() => onEdit(index, message.content)}>
 											<span className="codicon codicon-edit" aria-hidden="true" />
+										</button>
+									)}
+									{message.role === 'assistant' && (
+										<button className={messageActionClass} disabled={busy} title="Regenerate response" aria-label="Regenerate response" onClick={() => onRegenerate(index)}>
+											<span className="codicon codicon-refresh" aria-hidden="true" />
 										</button>
 									)}
 									<button className={messageActionClass} title={copiedIndex === index ? 'Copied' : 'Copy message'} aria-label={copiedIndex === index ? 'Copied' : 'Copy message'} onClick={() => void copyMessage(index, message.content)}>

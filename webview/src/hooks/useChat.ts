@@ -186,6 +186,24 @@ export function useChat() {
 		});
 	};
 
+	const regenerate = (assistantIndex: number) => {
+		const userIndex = assistantIndex - 1;
+		const userMessage = messages[userIndex];
+		if (busy || messages[assistantIndex]?.role !== 'assistant' || userMessage?.role !== 'user' || !selectedModelId) return;
+		const nextMessages = [
+			...messages.slice(0, userIndex),
+			userMessage,
+			{ role: 'assistant' as const, content: '' },
+		];
+		setMessages(nextMessages);
+		startRequest({
+			text: userMessage.content,
+			modelId: selectedModelId,
+			editMessageIndex: userIndex,
+			assistantIndex: nextMessages.length - 1,
+		});
+	};
+
 	const editMessage = (index: number, text: string) => {
 		setEditingIndex(index);
 		setInput(text);
@@ -219,6 +237,7 @@ export function useChat() {
 		selectConversation,
 		deleteConversation: (conversationId: string) => postMessage({ type: 'deleteConversation', conversationId }),
 		editMessage,
+		regenerate,
 		retry,
 		send,
 	};
