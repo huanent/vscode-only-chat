@@ -58,8 +58,8 @@ export function HistoryPanel({
 						<div className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold text-muted uppercase">{group.label}</div>
 						<ul className="m-0 list-none p-0">
 							{group.items.map(conversation => (
-								<li className={`group grid min-h-9 grid-cols-[minmax(0,1fr)_32px] items-center rounded hover:bg-hover ${conversation.id === currentConversationId ? 'bg-selection text-selection-foreground' : ''}`} key={conversation.id}>
-									<button className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center border-0 bg-transparent py-1 pr-1 pl-2 text-left text-[13px] text-inherit" onClick={() => onSelect(conversation.id)}>
+								<li className={`group grid grid-cols-[minmax(0,1fr)_32px] items-center rounded p-1 hover:bg-hover ${conversation.id === currentConversationId ? 'bg-selection text-selection-foreground' : ''}`} key={conversation.id}>
+									<button className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center border-0 bg-transparent pr-1 pl-2 text-left text-[13px] text-inherit" onClick={() => onSelect(conversation.id)}>
 										<span className="codicon codicon-comment text-sm" aria-hidden="true" />
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap leading-5">{conversation.summary}</span>
 									</button>
