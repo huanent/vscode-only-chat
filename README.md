@@ -23,8 +23,7 @@ VS Code may request permission to access language models when you send the first
 
 | Action | macOS | Windows / Linux |
 | --- | --- | --- |
-| Open Only Chat | `Cmd+Shift+I` | `Ctrl+Shift+I` |
-| New conversation | `Cmd+N` | `Ctrl+N` |
+| Open Only Chat / new conversation when focused | `Cmd+Shift+I` | `Ctrl+Shift+I` |
 | New chat tab | `Cmd+T` | `Ctrl+T` |
 
 ## Settings
