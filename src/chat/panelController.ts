@@ -11,7 +11,7 @@ import { getWebviewHtml } from '../webview';
 import { storageKeys, webviewFocusContextKey } from './constants';
 import type { OnlyChatDocument } from './document';
 import type { OnlyChatManager } from './manager';
-import type { WebviewMessage } from './messages';
+import type { ModelItem, WebviewMessage } from './messages';
 import type { ModelService } from './modelService';
 
 export class OnlyChatPanelController implements vscode.Disposable {
@@ -75,6 +75,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		try {
 			switch (message.type) {
 				case 'ready':
+					await this.postCachedModels();
 					await Promise.all([this.loadModels(), this.renderConversations()]);
 					return;
 				case 'focusChanged':
@@ -197,18 +198,29 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			if (version !== this.modelService.currentVersion) {
 				return;
 			}
-			await this.panel.webview.postMessage({
-				type: 'models',
-				selectedModelId: this.context.globalState.get<string>(storageKeys.selectedModel)
-					?? this.context.globalState.get<string>(storageKeys.legacySelectedModel),
-				models: modelItems,
-			});
+			await this.postModels(modelItems);
 		} catch (error) {
 			await this.panel.webview.postMessage({
 				type: 'modelsError',
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	private async postCachedModels(): Promise<void> {
+		const modelItems = this.modelService.getCachedModelItems();
+		if (modelItems.length > 0) {
+			await this.postModels(modelItems);
+		}
+	}
+
+	private postModels(models: readonly ModelItem[]): Thenable<boolean> {
+		return this.panel.webview.postMessage({
+			type: 'models',
+			selectedModelId: this.context.globalState.get<string>(storageKeys.selectedModel)
+				?? this.context.globalState.get<string>(storageKeys.legacySelectedModel),
+			models,
+		});
 	}
 
 	private async send(requestId: string, text: string, modelId: string, editMessageIndex?: number): Promise<void> {

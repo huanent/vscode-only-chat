@@ -9,6 +9,7 @@ export const webviewFocusContextKey = 'onlyChat.webviewFocus';
 
 export const storageKeys = {
 	selectedModel: 'onlyChat.selectedModelId',
+	cachedModels: 'onlyChat.cachedModels',
 	conversations: 'onlyChat.conversations',
 	currentConversation: 'onlyChat.currentConversationId',
 	legacySelectedModel: 'temporaryChat.selectedModelId',
