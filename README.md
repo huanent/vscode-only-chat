@@ -6,7 +6,7 @@ A focused AI chat editor for VS Code, powered by the Language Model API.
 
 - Use any language model available in VS Code and switch models per request.
 - Stream responses with support for Markdown, syntax highlighting, tables, and math.
-- Create, switch, and delete conversations stored in VS Code local state.
+- Create, switch, and delete conversations stored in VS Code local state or a custom directory.
 - Open multiple chat tabs and continue from shared conversation history.
 - Copy responses, edit an earlier message, regenerate the following conversation, or stop an active request.
 - Configure a custom conversation prompt from VS Code settings.
@@ -29,6 +29,7 @@ VS Code may request permission to access language models when you send the first
 ## Settings
 
 - `onlyChat.prompt`: instructions added to every conversation.
+- `onlyChat.conversationStoragePath`: machine-local absolute directory used to store each conversation as a separate JSON file. It is not included in VS Code Settings Sync. Supports `~`; reload VS Code after changing it.
 
 ## Development
 

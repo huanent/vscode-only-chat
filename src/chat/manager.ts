@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
-import { createConversation, type StoredConversation, type StoredMessage } from '../conversation';
+import type { StoredConversation } from '../conversation';
 import { commandIds, editorViewType, storageKeys } from './constants';
+import { ConversationStorage } from './conversationStorage';
 import { OnlyChatDocument } from './document';
 import { ModelService } from './modelService';
 import { OnlyChatPanelController } from './panelController';
@@ -13,16 +14,19 @@ export class OnlyChatManager implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[] = [];
 	private currentController: OnlyChatPanelController | undefined;
 
-	constructor(private readonly context: vscode.ExtensionContext) {
-		this.conversations = context.globalState.get<StoredConversation[]>(storageKeys.conversations)
-			?? context.globalState.get<StoredConversation[]>(storageKeys.legacyConversations, []);
-		if (this.conversations.length === 0) {
-			const legacyMessages = context.globalState.get<StoredMessage[]>(storageKeys.legacyConversation, []);
-			if (legacyMessages.length > 0) {
-				this.conversations.push(createConversation(legacyMessages));
-			}
-		}
+	private constructor(
+		private readonly context: vscode.ExtensionContext,
+		private readonly conversationStorage: ConversationStorage,
+		conversations: StoredConversation[],
+	) {
+		this.conversations = conversations;
 		this.modelService = new ModelService(context);
+	}
+
+	static async create(context: vscode.ExtensionContext): Promise<OnlyChatManager> {
+		const conversationStorage = await ConversationStorage.create(context);
+		const conversations = await conversationStorage.load();
+		return new OnlyChatManager(context, conversationStorage, conversations);
 	}
 
 	register(): void {
@@ -65,7 +69,7 @@ export class OnlyChatManager implements vscode.Disposable {
 
 	async persist(currentConversationId: string): Promise<void> {
 		await Promise.all([
-			this.context.globalState.update(storageKeys.conversations, this.conversations),
+			this.conversationStorage.persist(this.conversations),
 			this.context.globalState.update(storageKeys.currentConversation, currentConversationId),
 			this.context.globalState.update(storageKeys.legacyConversation, undefined),
 		]);

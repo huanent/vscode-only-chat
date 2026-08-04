@@ -1,5 +1,7 @@
-import type { Ref } from 'react';
+import { useEffect, useState, type Ref, type UIEvent } from 'react';
 import type { ConversationItem } from '../types';
+
+const pageSize = 30;
 
 type HistoryPanelProps = {
 	panelRef: Ref<HTMLElement>;
@@ -26,6 +28,19 @@ export function HistoryPanel({
 	const filtered = normalizedQuery
 		? conversations.filter(conversation => conversation.summary.toLocaleLowerCase().includes(normalizedQuery))
 		: conversations;
+	const [visibleCount, setVisibleCount] = useState(pageSize);
+	const visibleConversations = filtered.slice(0, visibleCount);
+
+	useEffect(() => {
+		setVisibleCount(pageSize);
+	}, [normalizedQuery]);
+
+	const loadNextPage = (event: UIEvent<HTMLUListElement>) => {
+		const list = event.currentTarget;
+		if (visibleCount < filtered.length && list.scrollTop + list.clientHeight >= list.scrollHeight - 32) {
+			setVisibleCount(current => Math.min(current + pageSize, filtered.length));
+		}
+	};
 
 	return (
 		<aside ref={panelRef} className="absolute top-11 left-2 z-115 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-widget-border bg-menu shadow-widget" aria-label="Conversation history">
@@ -45,7 +60,7 @@ export function HistoryPanel({
 					<span className="codicon codicon-close" aria-hidden="true" />
 				</button>
 			</div>
-			<ul className="min-h-0 list-none overflow-y-auto p-1.5">
+			<ul className="min-h-0 list-none overflow-y-auto p-1.5" onScroll={loadNextPage}>
 				{filtered.length === 0 && (
 					<li className="grid min-h-40 place-content-center justify-items-center gap-2 p-6 text-center text-xs leading-4 text-muted">
 						<span className={`codicon text-xl ${normalizedQuery ? 'codicon-search' : 'codicon-comment-discussion'}`} aria-hidden="true" />
@@ -53,7 +68,7 @@ export function HistoryPanel({
 						<span>{normalizedQuery ? 'Try a different keyword.' : 'Your recent chats will appear here.'}</span>
 					</li>
 				)}
-				{groupConversations(filtered).map(group => (
+				{groupConversations(visibleConversations).map(group => (
 					<li key={group.label}>
 						<div className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold text-muted uppercase">{group.label}</div>
 						<ul className="m-0 list-none p-0">

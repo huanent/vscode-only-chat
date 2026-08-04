@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { OnlyChatManager } from './chat/manager';
 
-export function activate(context: vscode.ExtensionContext): void {
-	const manager = new OnlyChatManager(context);
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+	const manager = await OnlyChatManager.create(context);
 	manager.register();
 	context.subscriptions.push(manager);
 }

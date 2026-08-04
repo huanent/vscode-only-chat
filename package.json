@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "A focused AI chat panel for VS Code",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -90,6 +90,12 @@
           "default": "",
           "markdownDescription": "The prompt used for conversations.",
           "scope": "window"
+        },
+        "onlyChat.conversationStoragePath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Local directory for per-conversation JSON files. Supports `~`. Leave empty for VS Code storage. Reload after changing.",
+          "scope": "machine"
         }
       }
     }
