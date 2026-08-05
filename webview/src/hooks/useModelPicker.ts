@@ -8,8 +8,13 @@ export function useModelPicker(disabled: boolean) {
 		const close = (event: MouseEvent) => {
 			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
 		};
+		const closeOnBlur = () => setOpen(false);
 		document.addEventListener('mousedown', close);
-		return () => document.removeEventListener('mousedown', close);
+		window.addEventListener('blur', closeOnBlur);
+		return () => {
+			document.removeEventListener('mousedown', close);
+			window.removeEventListener('blur', closeOnBlur);
+		};
 	}, []);
 
 	useEffect(() => {

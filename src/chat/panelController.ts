@@ -6,6 +6,7 @@ import {
 	getConversationSummary,
 	normalizeGeneratedSummary,
 	type StoredConversation,
+	type TokenUsage,
 } from '../conversation';
 import { getWebviewHtml } from '../webview';
 import { storageKeys, webviewFocusContextKey } from './constants';
@@ -281,23 +282,25 @@ export class OnlyChatPanelController implements vscode.Disposable {
 				: undefined;
 			modelName = model.name;
 			await this.panel.webview.postMessage({ type: 'started', requestId, model: modelName });
+			const inputTokenCountPromise = countMessageTokens(model, requestMessages, cancellation.token);
 			const response = await model.sendRequest(requestMessages, {}, cancellation.token);
 			for await (const chunk of response.text) {
 				answer += chunk;
 				await this.panel.webview.postMessage({ type: 'chunk', requestId, text: chunk });
 			}
+			const tokenUsage = await resolveTokenUsage(response, model, answer, inputTokenCountPromise, cancellation.token);
 
 			const updatedConversation = conversation ?? createStoredConversation(conversationId, userText);
 			updatedConversation.messages.push(
 				{ role: 'user', content: userText },
-				{ role: 'assistant', content: answer, model: modelName },
+				{ role: 'assistant', content: answer, model: modelName, tokenUsage },
 			);
 			updatedConversation.updatedAt = Date.now();
 			if (!conversation) {
 				this.document.conversations.push(updatedConversation);
 			}
 			await this.manager.persist(this.currentConversationId);
-			await this.panel.webview.postMessage({ type: 'completed', requestId });
+			await this.panel.webview.postMessage({ type: 'completed', requestId, tokenUsage });
 			await Promise.all([this.renderConversations(), this.refreshConversationHistory()]);
 			if (summaryPromise) {
 				void summaryPromise.then(summary => this.applyGeneratedSummary(conversationId, summary));
@@ -413,6 +416,64 @@ function describeError(error: unknown): { message: string; details?: string } {
 		message,
 		details: details || 'The model provider did not return any additional error details.',
 	};
+}
+
+async function countMessageTokens(
+	model: vscode.LanguageModelChat,
+	messages: vscode.LanguageModelChatMessage[],
+	token: vscode.CancellationToken,
+): Promise<number | undefined> {
+	try {
+		const counts = await Promise.all(messages.map(message => model.countTokens(message, token)));
+		return counts.reduce((total, count) => total + count, 0);
+	} catch {
+		return undefined;
+	}
+}
+
+async function resolveTokenUsage(
+	response: vscode.LanguageModelChatResponse,
+	model: vscode.LanguageModelChat,
+	answer: string,
+	inputTokenCountPromise: Promise<number | undefined>,
+	token: vscode.CancellationToken,
+): Promise<TokenUsage | undefined> {
+	const reportedUsage = await getReportedTokenUsage(response);
+	if (reportedUsage) return reportedUsage;
+
+	const [input, output] = await Promise.all([
+		inputTokenCountPromise,
+		Promise.resolve(model.countTokens(answer, token)).catch(() => undefined),
+	]);
+	return input === undefined || output === undefined ? undefined : { input, output };
+}
+
+async function getReportedTokenUsage(response: vscode.LanguageModelChatResponse): Promise<TokenUsage | undefined> {
+	const responseRecord = response as unknown as Record<string, unknown>;
+	const rawUsage = await Promise.resolve(responseRecord.tokenUsage ?? responseRecord.usage);
+	if (!rawUsage || typeof rawUsage !== 'object') return undefined;
+
+	const usage = rawUsage as Record<string, unknown>;
+	const inputDetails = getRecord(usage.inputTokenDetails ?? usage.input_tokens_details ?? usage.promptTokensDetails ?? usage.prompt_tokens_details);
+	const input = getTokenCount(usage, ['input', 'inputTokens', 'input_tokens', 'promptTokens', 'prompt_tokens']);
+	const output = getTokenCount(usage, ['output', 'outputTokens', 'output_tokens', 'completionTokens', 'completion_tokens']);
+	if (input === undefined || output === undefined) return undefined;
+
+	const cachedInput = getTokenCount(usage, ['cachedInput', 'cachedInputTokens', 'cached_input_tokens', 'cacheReadInputTokens'])
+		?? (inputDetails ? getTokenCount(inputDetails, ['cachedTokens', 'cached_tokens']) : undefined);
+	return { input, output, ...(cachedInput === undefined ? {} : { cachedInput }) };
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+	return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+}
+
+function getTokenCount(source: Record<string, unknown>, keys: string[]): number | undefined {
+	for (const key of keys) {
+		const value = source[key];
+		if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return Math.round(value);
+	}
+	return undefined;
 }
 
 function collectErrorDetails(error: unknown, seen = new Set<unknown>()): string[] {

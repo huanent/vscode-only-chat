@@ -71,6 +71,11 @@ export function useChat() {
 					setMessages(current => updateAssistant(current, pendingRequest.assistantIndex, item => ({ ...item, content: item.content + message.text })));
 					return;
 				case 'completed':
+					if (message.requestId !== pendingRequest?.requestId) return;
+					setMessages(current => updateAssistant(current, pendingRequest.assistantIndex, item => ({ ...item, tokenUsage: message.tokenUsage })));
+					setBusy(false);
+					pendingRequestRef.current = undefined;
+					return;
 				case 'cancelled':
 					if (message.requestId !== pendingRequest?.requestId) return;
 					setBusy(false);

@@ -1,7 +1,14 @@
+export type TokenUsage = {
+	input: number;
+	output: number;
+	cachedInput?: number;
+};
+
 export type StoredMessage = {
 	role: 'user' | 'assistant';
 	content: string;
 	model?: string;
+	tokenUsage?: TokenUsage;
 	error?: string;
 	errorDetails?: string;
 };
@@ -31,7 +38,7 @@ export type InboundMessage =
 	| { type: 'modelsError'; message: string }
 	| { type: 'started'; requestId: string; model: string }
 	| { type: 'chunk'; requestId: string; text: string }
-	| { type: 'completed'; requestId: string }
+	| { type: 'completed'; requestId: string; tokenUsage?: TokenUsage }
 	| { type: 'cancelled'; requestId: string }
 	| { type: 'error'; requestId?: string; message: string; details?: string; retryWithoutEdit?: boolean }
 	| { type: 'summaryChunk'; conversationId: string; summary: string };

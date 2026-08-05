@@ -1,9 +1,16 @@
 import { randomUUID } from 'crypto';
 
+export type TokenUsage = {
+	input: number;
+	output: number;
+	cachedInput?: number;
+};
+
 export type StoredMessage = {
 	role: 'user' | 'assistant';
 	content: string;
 	model?: string;
+	tokenUsage?: TokenUsage;
 };
 
 export type StoredConversation = {

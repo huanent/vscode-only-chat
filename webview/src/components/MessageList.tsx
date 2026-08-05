@@ -85,6 +85,12 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 										<span className={`codicon ${copiedIndex === index ? 'codicon-check' : 'codicon-copy'}`} aria-hidden="true" />
 									</button>
 									{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={message.model}>{message.model}</span>}
+									{message.tokenUsage && (
+										<span className="text-[11px] whitespace-nowrap text-muted" title={formatTokenUsageTitle(message.tokenUsage)}>
+											{formatTokenCount(message.tokenUsage.input)} in · {formatTokenCount(message.tokenUsage.output)} out
+											{message.tokenUsage.cachedInput !== undefined && ` · ${formatTokenCount(message.tokenUsage.cachedInput)} cached`}
+										</span>
+									)}
 								</div>
 						</div>
 						</article>
@@ -104,3 +110,11 @@ function getGreeting(hour: number) {
 }
 
 const messageActionClass = 'grid size-7 place-items-center rounded border-0 bg-transparent p-0 text-icon [&_.codicon]:text-sm hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50';
+
+function formatTokenCount(count: number) {
+	return count < 1000 ? String(count) : `${(count / 1000).toFixed(count < 10000 ? 1 : 0)}k`;
+}
+
+function formatTokenUsageTitle(usage: { input: number; output: number; cachedInput?: number }) {
+	return `${usage.input.toLocaleString()} input tokens · ${usage.output.toLocaleString()} output tokens${usage.cachedInput === undefined ? '' : ` · ${usage.cachedInput.toLocaleString()} cached input tokens`}`;
+}

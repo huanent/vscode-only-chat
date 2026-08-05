@@ -128,5 +128,16 @@ function isStoredConversation(value: unknown): value is StoredConversation {
 		&& conversation.messages.every(message => Boolean(message)
 			&& (message.role === 'user' || message.role === 'assistant')
 			&& typeof message.content === 'string'
-			&& (message.model === undefined || typeof message.model === 'string'));
+			&& (message.model === undefined || typeof message.model === 'string')
+			&& (message.tokenUsage === undefined || isTokenUsage(message.tokenUsage)));
+}
+
+function isTokenUsage(value: unknown): boolean {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+	const usage = value as Record<string, unknown>;
+	return typeof usage.input === 'number'
+		&& typeof usage.output === 'number'
+		&& (usage.cachedInput === undefined || typeof usage.cachedInput === 'number');
 }
