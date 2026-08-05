@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
 import type { StoredMessage } from '../types';
 
 export function useMessageNavigation(messages: StoredMessage[]) {
@@ -36,6 +36,7 @@ export function useMessageNavigation(messages: StoredMessage[]) {
 		}
 		setActiveAnchorIndex(current => current === nextAnchorIndex ? current : nextAnchorIndex);
 	};
+	const updateNavigationEvent = useEffectEvent(updateNavigation);
 
 	const handleScroll = () => {
 		const container = containerRef.current;
@@ -68,7 +69,7 @@ export function useMessageNavigation(messages: StoredMessage[]) {
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
-		const resizeObserver = new ResizeObserver(updateNavigation);
+		const resizeObserver = new ResizeObserver(updateNavigationEvent);
 		resizeObserver.observe(container);
 		return () => resizeObserver.disconnect();
 	}, []);
