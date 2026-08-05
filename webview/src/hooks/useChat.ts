@@ -98,7 +98,10 @@ export function useChat() {
 			postMessage({ type: 'focusChanged', focused: true });
 			inputRef.current?.focus();
 		};
-		const blur = () => postMessage({ type: 'focusChanged', focused: false });
+		const blur = () => {
+			setHistoryVisible(false);
+			postMessage({ type: 'focusChanged', focused: false });
+		};
 		window.addEventListener('focus', focus);
 		window.addEventListener('blur', blur);
 		postMessage({ type: 'ready' });

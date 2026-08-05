@@ -27,7 +27,7 @@ export function ChatInput({ inputRef, input, busy, editingIndex, models, selecte
 					aria-multiline="true"
 					contentEditable={busy ? false : 'plaintext-only'}
 					data-disabled={busy}
-					data-placeholder="Type a message. Enter to send, Shift+Enter for a new line"
+					data-placeholder="What’s on your mind?"
 					autoFocus
 					onInput={event => onInputChange(event.currentTarget.textContent ?? '')}
 					onKeyDown={event => {

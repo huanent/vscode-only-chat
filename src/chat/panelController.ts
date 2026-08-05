@@ -159,16 +159,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 	}
 
 	private async deleteConversation(conversationId: string): Promise<void> {
-		const conversation = this.document.conversations.find(candidate => candidate.id === conversationId);
-		if (!conversation) {
-			return;
-		}
-		const answer = await vscode.window.showWarningMessage(
-			`Delete conversation "${conversation.summary}"?`,
-			{ modal: true },
-			'Delete',
-		);
-		if (answer !== 'Delete') {
+		if (!this.document.conversations.some(candidate => candidate.id === conversationId)) {
 			return;
 		}
 		this.cancelSummary(conversationId);
