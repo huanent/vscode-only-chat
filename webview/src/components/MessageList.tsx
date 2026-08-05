@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { StoredMessage } from '../types';
 import { useMessageNavigation } from '../hooks/useMessageNavigation';
+import { getRandomQuote } from '../lib/quotes';
 import { MarkdownContent } from './MarkdownContent';
 import { MessageAnchors } from './MessageAnchors';
 
@@ -16,7 +17,9 @@ type MessageListProps = {
 export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate, onRetry }: MessageListProps) {
 	const navigation = useMessageNavigation(messages);
 	const [copiedIndex, setCopiedIndex] = useState<number>();
+	const [quote] = useState(getRandomQuote);
 	const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const greeting = getGreeting(new Date().getHours());
 
 	useEffect(() => () => clearTimeout(copyFeedbackTimerRef.current), []);
 
@@ -34,8 +37,8 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 				{messages.length === 0 && (
 					<div className="grid h-full place-content-center justify-items-center text-center">
 						<span className="codicon codicon-comment-discussion text-[32px]! leading-none! text-icon" aria-hidden="true" />
-						<h1 className="mt-3.5 mb-0 text-xl font-semibold">What are you working on?</h1>
-						<p className="mt-2 mb-0 max-w-105 text-[12px] leading-5 text-muted">Start with a question, a piece of code, or an idea you want to explore.</p>
+						<h1 className="mt-3.5 mb-0 text-xl font-semibold">{greeting}</h1>
+						<p className="mt-2 mb-0 max-w-105 text-[12px] leading-5 text-muted">“{quote.text}” — {quote.author}</p>
 					</div>
 				)}
 				{messages.length > 0 && <div className="min-h-full pt-8 pb-10">{messages.map((message, index) => {
@@ -92,6 +95,12 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 			<div className={`message-list-fade message-list-fade-bottom ${navigation.scrollOverflow.bottom ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
 		</div>
 	);
+}
+
+function getGreeting(hour: number) {
+	if (hour < 12) return 'Good morning';
+	if (hour < 18) return 'Good afternoon';
+	return 'Good evening';
 }
 
 const messageActionClass = 'grid size-7 place-items-center rounded border-0 bg-transparent p-0 text-icon [&_.codicon]:text-sm hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50';

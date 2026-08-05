@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "A focused AI chat panel for VS Code",
-  "version": "1.5.9",
+  "version": "1.5.10",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
