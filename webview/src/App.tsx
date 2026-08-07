@@ -1,6 +1,8 @@
+import { Menu } from 'lucide-react';
 import { ChatInput } from './components/ChatInput';
 import { HistoryPanel } from './components/HistoryPanel';
 import { MessageList } from './components/MessageList';
+import { IconButton, IconButtonSize } from './components/ui/IconButton';
 import { useChat } from './hooks/useChat';
 
 export function App() {
@@ -9,9 +11,7 @@ export function App() {
 	return (
 		<div className="relative h-full px-2">
 			<div className="absolute top-1.5 left-1.5 z-20 flex gap-1">
-				<button ref={chat.historyButtonRef} className={iconButtonClass} title="Show conversation history" aria-label="Show conversation history" aria-expanded={chat.historyVisible} onClick={() => chat.setHistoryVisible(value => !value)}>
-					<span className="codicon codicon-menu" aria-hidden="true" />
-				</button>
+				<IconButton ref={chat.historyButtonRef} label="Show conversation history" icon={<Menu size={16} aria-hidden="true" />} size={IconButtonSize.Medium} aria-expanded={chat.historyVisible} onClick={() => chat.setHistoryVisible(value => !value)} />
 			</div>
 			{chat.historyVisible && (
 				<HistoryPanel
@@ -43,5 +43,3 @@ export function App() {
 		</div>
 	);
 }
-
-const iconButtonClass = 'grid size-8 place-items-center rounded border-0 bg-transparent p-0 text-icon [&_.codicon]:text-base hover:bg-toolbar-hover hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-focus';

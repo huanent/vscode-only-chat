@@ -1,6 +1,8 @@
+import { Send, Square } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { ModelItem } from '../types';
 import { ModelPicker } from './ModelPicker';
+import { IconButton } from './ui/IconButton';
 
 type ChatInputProps = {
 	inputRef: RefObject<HTMLDivElement | null>;
@@ -38,12 +40,14 @@ export function ChatInput({ inputRef, input, busy, editingIndex, models, selecte
 					}}
 				/>
 				<div className="flex min-h-8 items-center gap-2 px-1.5 pb-1.5">
-					{editingIndex !== undefined && <span className="flex items-center gap-1.5 text-xs text-focus"><span className="codicon codicon-edit text-sm" /> Editing message</span>}
 					<ModelPicker models={models} selectedModelId={selectedModelId} disabled={busy} error={modelsError} onSelect={onSelectModel} />
 					<span className="flex-1" />
-					<button className="grid size-7 place-items-center rounded border-0 bg-transparent p-0 text-icon hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50" title={busy ? 'Stop generating' : 'Send'} aria-label={busy ? 'Stop generating' : 'Send'} disabled={!busy && (!input.trim() || !selectedModelId)} onClick={onSend}>
-						<span className={`codicon text-base ${busy ? 'codicon-debug-stop' : 'codicon-send'}`} aria-hidden="true" />
-					</button>
+					<IconButton
+						label={busy ? 'Stop generating' : 'Send'}
+						icon={busy ? <Square size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+						disabled={!busy && (!input.trim() || !selectedModelId)}
+						onClick={onSend}
+					/>
 				</div>
 			</div>
 		</section>

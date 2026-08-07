@@ -1,8 +1,10 @@
+import { CircleAlert, MessagesSquare } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { StoredMessage } from '../types';
 import { useMessageNavigation } from '../hooks/useMessageNavigation';
 import { getRandomQuote } from '../lib/quotes';
 import { MarkdownContent } from './MarkdownContent';
+import { MessageActions } from './MessageActions';
 import { MessageAnchors } from './MessageAnchors';
 
 type MessageListProps = {
@@ -36,7 +38,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 			<main className="h-full w-[calc(100%+12px)] overflow-x-hidden overflow-y-auto pr-4 pl-1" ref={navigation.containerRef} onScroll={navigation.handleScroll}>
 				{messages.length === 0 && (
 					<div className="grid h-full place-content-center justify-items-center text-center">
-						<span className="codicon codicon-comment-discussion text-[32px]! leading-none! text-icon" aria-hidden="true" />
+						<MessagesSquare className="text-icon" size={32} aria-hidden="true" />
 						<h1 className="mt-3.5 mb-0 text-xl font-semibold">{greeting}</h1>
 						<p className="mt-2 mb-0 max-w-105 text-[12px] leading-5 text-muted">“{quote.text}” — {quote.author}</p>
 					</div>
@@ -59,7 +61,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 								)}
 								{message.error && (
 									<div className="mt-2 grid max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 rounded border border-error-border bg-error px-2.5 py-2 text-error-foreground" role="alert">
-										<span className="codicon codicon-error mt-0.5 shrink-0" aria-hidden="true" />
+										<CircleAlert className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
 										<span className="min-w-0 flex-1 wrap-break-word">{message.error}</span>
 										<button className="shrink-0 rounded border-0 bg-transparent px-1.5 py-0.5 text-link hover:bg-toolbar-hover" disabled={busy} onClick={() => onRetry(index)}>Retry</button>
 										{message.errorDetails && (
@@ -70,20 +72,15 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 										)}
 									</div>
 								)}
-								<div className="flex h-7 items-center gap-1 pt-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-									{message.role === 'user' && (
-										<button className={messageActionClass} disabled={busy} title="Edit message" aria-label="Edit message" onClick={() => onEdit(index, message.content)}>
-											<span className="codicon codicon-edit" aria-hidden="true" />
-										</button>
-									)}
-									{message.role === 'assistant' && (
-										<button className={messageActionClass} disabled={busy} title="Regenerate response" aria-label="Regenerate response" onClick={() => onRegenerate(index)}>
-											<span className="codicon codicon-refresh" aria-hidden="true" />
-										</button>
-									)}
-									<button className={messageActionClass} title={copiedIndex === index ? 'Copied' : 'Copy message'} aria-label={copiedIndex === index ? 'Copied' : 'Copy message'} onClick={() => void copyMessage(index, message.content)}>
-										<span className={`codicon ${copiedIndex === index ? 'codicon-check' : 'codicon-copy'}`} aria-hidden="true" />
-									</button>
+								<div className="flex h-7 items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+									<MessageActions
+										message={message}
+										busy={busy}
+										copied={copiedIndex === index}
+										onEdit={() => onEdit(index, message.content)}
+										onRegenerate={() => onRegenerate(index)}
+										onCopy={() => void copyMessage(index, message.content)}
+									/>
 									{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={message.model}>{message.model}</span>}
 									{message.tokenUsage && (
 										<span className="text-[11px] whitespace-nowrap text-muted" title={formatTokenUsageTitle(message.tokenUsage)}>
@@ -108,8 +105,6 @@ function getGreeting(hour: number) {
 	if (hour < 18) return 'Good afternoon';
 	return 'Good evening';
 }
-
-const messageActionClass = 'grid size-7 place-items-center rounded border-0 bg-transparent p-0 text-icon [&_.codicon]:text-sm hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50';
 
 function formatTokenCount(count: number) {
 	return count < 1000 ? String(count) : `${(count / 1000).toFixed(count < 10000 ? 1 : 0)}k`;

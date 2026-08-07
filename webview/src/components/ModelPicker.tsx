@@ -1,3 +1,4 @@
+import { Check, Sparkles } from 'lucide-react';
 import { useModelPicker } from '../hooks/useModelPicker';
 import type { ModelItem } from '../types';
 
@@ -20,7 +21,7 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 	return (
 		<div className="relative min-w-0 max-w-[min(60vw,320px)] max-[620px]:max-w-[52vw]" ref={rootRef}>
 			<button
-				className={`flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 text-xs text-muted [&_.codicon]:text-sm hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50 ${open ? 'bg-toolbar-hover text-foreground' : ''}`}
+				className={`flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 text-xs text-muted hover:bg-toolbar-hover hover:text-foreground disabled:cursor-default disabled:opacity-50 ${open ? 'bg-toolbar-hover text-foreground' : ''}`}
 				type="button"
 				disabled={disabled || models.length === 0}
 				aria-haspopup="listbox"
@@ -28,7 +29,7 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 				title={selectedModel ? `${selectedModel.providerName} · ${selectedModel.name}` : label}
 				onClick={() => setOpen(value => !value)}
 			>
-				<span className="codicon codicon-sparkle" aria-hidden="true" />
+				<Sparkles className="shrink-0" size={14} aria-hidden="true" />
 				<span className="overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
 			</button>
 			{open && (
@@ -38,13 +39,13 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 							<div className="px-1.5 pt-1.5 pb-0.5 text-[10px] font-semibold text-muted">{providerName}</div>
 							{providerModels.map(model => (
 								<button
-									className="grid min-h-8 w-full grid-cols-[16px_minmax(0,1fr)] items-center gap-1 rounded border-0 bg-transparent px-1.5 py-1 text-left text-xs text-menu-foreground hover:bg-menu-selection aria-selected:[&_.codicon]:visible"
+									className="grid min-h-8 w-full grid-cols-[16px_minmax(0,1fr)] items-center gap-1 rounded border-0 bg-transparent px-1.5 py-1 text-left text-xs text-menu-foreground hover:bg-menu-selection aria-selected:[&_.model-check]:visible"
 									key={model.id}
 									role="option"
 									aria-selected={model.id === selectedModelId}
 									onClick={() => { onSelect(model.id); setOpen(false); }}
 								>
-									<span className="codicon codicon-check invisible" aria-hidden="true" />
+									<Check className="model-check invisible" size={14} aria-hidden="true" />
 									<span className="grid min-w-0">
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap">{model.name}</span>
 										{model.family !== model.name && <small className="overflow-hidden text-[10px] text-ellipsis whitespace-nowrap text-muted">{model.family}</small>}
