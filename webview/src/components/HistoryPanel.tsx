@@ -1,7 +1,9 @@
 import { MessageSquare, MessagesSquare, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type Ref, type UIEvent } from 'react';
 import type { ConversationItem } from '../types';
+import { EmptyState } from './ui/EmptyState';
 import { IconButton, IconButtonSize } from './ui/IconButton';
+import { TextButton } from './ui/TextButton';
 
 const pageSize = 30;
 
@@ -62,10 +64,14 @@ export function HistoryPanel({
 			</div>
 			<ul className="min-h-0 list-none overflow-y-auto p-1.5" onScroll={loadNextPage}>
 				{filtered.length === 0 && (
-					<li className="grid min-h-40 place-content-center justify-items-center gap-2 p-6 text-center text-xs leading-4 text-muted">
-						{normalizedQuery ? <Search size={20} aria-hidden="true" /> : <MessagesSquare size={20} aria-hidden="true" />}
-						<strong className="text-[13px] text-foreground">{normalizedQuery ? 'No matching conversations' : 'No conversations yet'}</strong>
-						<span>{normalizedQuery ? 'Try a different keyword.' : 'Your recent chats will appear here.'}</span>
+					<li>
+						<EmptyState
+							icon={normalizedQuery ? <Search size={20} aria-hidden="true" /> : <MessagesSquare size={20} aria-hidden="true" />}
+							title={normalizedQuery ? 'No matching conversations' : 'No conversations yet'}
+							description={normalizedQuery ? 'Try a different keyword.' : 'Your recent chats will appear here.'}
+							className="min-h-40 gap-2 p-6 text-xs leading-4 text-muted"
+							titleClassName="text-[13px] text-foreground"
+						/>
 					</li>
 				)}
 				{groupConversations(visibleConversations).map(group => (
@@ -74,10 +80,10 @@ export function HistoryPanel({
 						<ul className="m-0 list-none p-0">
 							{group.items.map(conversation => (
 								<li className={`group grid grid-cols-[minmax(0,1fr)_32px] items-center rounded p-1 hover:bg-hover ${conversation.id === currentConversationId ? 'bg-selection text-selection-foreground' : ''}`} key={conversation.id}>
-									<button className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center border-0 bg-transparent pr-1 pl-2 text-left text-[13px] text-inherit" onClick={() => onSelect(conversation.id)}>
+									<TextButton className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center pr-1 pl-2 text-left text-[13px] text-inherit" onClick={() => onSelect(conversation.id)}>
 										<MessageSquare size={14} aria-hidden="true" />
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap leading-5">{conversation.summary}</span>
-									</button>
+									</TextButton>
 									<IconButton
 										label="Delete conversation"
 										icon={<Trash2 size={14} aria-hidden="true" />}

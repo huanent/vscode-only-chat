@@ -6,6 +6,8 @@ import { getRandomQuote } from '../lib/quotes';
 import { MarkdownContent } from './MarkdownContent';
 import { MessageActions } from './MessageActions';
 import { MessageAnchors } from './MessageAnchors';
+import { EmptyState } from './ui/EmptyState';
+import { TextButton } from './ui/TextButton';
 
 type MessageListProps = {
 	messages: StoredMessage[];
@@ -37,11 +39,15 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 			<MessageAnchors messages={messages} indexes={navigation.anchorIndexes} activeIndex={navigation.activeAnchorIndex} onSelect={navigation.scrollToMessage} />
 			<main className="h-full w-[calc(100%+12px)] overflow-x-hidden overflow-y-auto pr-4 pl-1" ref={navigation.containerRef} onScroll={navigation.handleScroll}>
 				{messages.length === 0 && (
-					<div className="grid h-full place-content-center justify-items-center text-center">
-						<MessagesSquare className="text-icon" size={32} aria-hidden="true" />
-						<h1 className="mt-3.5 mb-0 text-xl font-semibold">{greeting}</h1>
-						<p className="mt-2 mb-0 max-w-105 text-[12px] leading-5 text-muted">“{quote.text}” — {quote.author}</p>
-					</div>
+					<EmptyState
+						icon={<MessagesSquare className="text-icon" size={32} aria-hidden="true" />}
+						title={greeting}
+						titleAs="h1"
+						description={<>“{quote.text}” — {quote.author}</>}
+						className="h-full"
+						titleClassName="mt-3.5 text-xl font-semibold"
+						descriptionClassName="mt-2 max-w-105 text-[12px] leading-5 text-muted"
+					/>
 				)}
 				{messages.length > 0 && <div className="min-h-full pt-8 pb-10">{messages.map((message, index) => {
 					const isUser = message.role === 'user';
@@ -63,7 +69,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 									<div className="mt-2 grid max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 rounded border border-error-border bg-error px-2.5 py-2 text-error-foreground" role="alert">
 										<CircleAlert className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
 										<span className="min-w-0 flex-1 wrap-break-word">{message.error}</span>
-										<button className="shrink-0 rounded border-0 bg-transparent px-1.5 py-0.5 text-link hover:bg-toolbar-hover" disabled={busy} onClick={() => onRetry(index)}>Retry</button>
+										<TextButton className="shrink-0 px-1.5 py-0.5 text-link hover:bg-toolbar-hover" disabled={busy} onClick={() => onRetry(index)}>Retry</TextButton>
 										{message.errorDetails && (
 											<details className="col-start-2 col-end-4 mt-1 min-w-0 text-foreground">
 												<summary className="cursor-pointer select-none text-xs text-link">Show details</summary>
