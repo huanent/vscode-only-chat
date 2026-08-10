@@ -78,7 +78,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 										)}
 									</div>
 								)}
-								<div className="flex h-7 items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+								<div className="flex min-h-7 max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
 									<MessageActions
 										message={message}
 										busy={busy}
@@ -89,7 +89,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 									/>
 									{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={message.model}>{message.model}</span>}
 									{message.tokenUsage && (
-										<span className="text-[11px] whitespace-nowrap text-muted" title={formatTokenUsageTitle(message.tokenUsage)}>
+										<span className="max-w-full overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={formatTokenUsageTitle(message.tokenUsage)}>
 											{formatTokenCount(message.tokenUsage.input)} in · {formatTokenCount(message.tokenUsage.output)} out
 											{message.tokenUsage.cachedInput !== undefined && ` · ${formatTokenCount(message.tokenUsage.cachedInput)} cached`}
 										</span>

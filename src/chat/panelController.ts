@@ -192,6 +192,9 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			}
 			await this.postModels(modelItems);
 		} catch (error) {
+			if (this.modelService.getCachedModelItems().length > 0) {
+				return;
+			}
 			await this.panel.webview.postMessage({
 				type: 'modelsError',
 				message: error instanceof Error ? error.message : String(error),

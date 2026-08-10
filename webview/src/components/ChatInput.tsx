@@ -2,7 +2,7 @@ import { Send, Square } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { ModelItem } from '../types';
 import { ModelPicker } from './ModelPicker';
-import { IconButton } from './ui/IconButton';
+import { IconButton, IconButtonSize } from './ui/IconButton';
 
 type ChatInputProps = {
 	inputRef: RefObject<HTMLDivElement | null>;
@@ -45,6 +45,7 @@ export function ChatInput({ inputRef, input, busy, editingIndex, models, selecte
 					<IconButton
 						label={busy ? 'Stop generating' : 'Send'}
 						icon={busy ? <Square size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+						size={IconButtonSize.Medium}
 						disabled={!busy && (!input.trim() || !selectedModelId)}
 						onClick={onSend}
 					/>

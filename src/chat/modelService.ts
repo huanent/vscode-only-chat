@@ -69,7 +69,7 @@ export class ModelService implements vscode.Disposable {
 			return this.modelItems;
 		}
 		if (!this.modelItemsPromise) {
-			const request = getLanguageModelProviderNames(this.context, models).then(providerNames => {
+			const request = getLanguageModelProviderNames(this.context, models).then(async providerNames => {
 				const visibleModels = new Map<string, ModelItem>();
 				for (const model of models) {
 					const providerName = providerNames.get(model.id) ?? model.vendor;
@@ -87,7 +87,7 @@ export class ModelService implements vscode.Disposable {
 				if (this.modelItemsPromise === request) {
 					this.modelItems = modelItems;
 					this.cachedModelItems = modelItems;
-					void this.context.globalState.update(storageKeys.cachedModels, modelItems);
+					await this.context.globalState.update(storageKeys.cachedModels, modelItems);
 				}
 				return modelItems;
 			}).finally(() => {

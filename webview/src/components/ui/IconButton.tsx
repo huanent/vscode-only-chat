@@ -18,17 +18,10 @@ type IconButtonProps = Omit<ComponentPropsWithRef<'button'>, 'aria-label' | 'chi
 	variant?: IconButtonVariant;
 };
 
-const sizeClasses: Record<IconButtonVariant, Record<IconButtonSize, string>> = {
-	[IconButtonVariant.Default]: {
-		[IconButtonSize.Small]: 'size-7',
-		[IconButtonSize.Medium]: 'size-8',
-		[IconButtonSize.Large]: 'size-9',
-	},
-	[IconButtonVariant.Ghost]: {
-		[IconButtonSize.Small]: 'size-6',
-		[IconButtonSize.Medium]: 'size-7',
-		[IconButtonSize.Large]: 'size-8',
-	},
+const sizeClasses: Record<IconButtonSize, string> = {
+	[IconButtonSize.Small]: 'size-6',
+	[IconButtonSize.Medium]: 'size-7',
+	[IconButtonSize.Large]: 'size-8',
 };
 
 const variantClasses: Record<IconButtonVariant, string> = {
@@ -39,7 +32,7 @@ const variantClasses: Record<IconButtonVariant, string> = {
 export function IconButton({ label, icon, size = IconButtonSize.Small, variant = IconButtonVariant.Default, className = '', title = label, type = 'button', ...props }: IconButtonProps) {
 	return (
 		<button
-			className={`${sizeClasses[variant][size]} ${variantClasses[variant]} grid place-items-center rounded border-0 bg-transparent p-0 text-icon disabled:cursor-default disabled:opacity-50 focus-visible:outline focus-visible:-outline-offset-1 focus-visible:outline-focus ${className}`}
+			className={`${sizeClasses[size]} ${variantClasses[variant]} grid shrink-0 place-items-center rounded border-0 bg-transparent p-0 text-icon transition-colors duration-75 disabled:cursor-default disabled:opacity-50 focus-visible:outline focus-visible:-outline-offset-1 focus-visible:outline-focus ${className}`}
 			type={type}
 			title={title}
 			aria-label={label}

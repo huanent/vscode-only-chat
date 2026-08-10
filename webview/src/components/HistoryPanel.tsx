@@ -60,7 +60,7 @@ export function HistoryPanel({
 						aria-label="Filter conversations"
 					/>
 				</label>
-				<IconButton label="Close conversation history" title="Close history" icon={<X size={14} aria-hidden="true" />} size={IconButtonSize.Medium} onClick={onClose} />
+				<IconButton label="Close conversation history" title="Close history" icon={<X size={14} aria-hidden="true" />} size={IconButtonSize.Large} onClick={onClose} />
 			</div>
 			<ul className="min-h-0 list-none overflow-y-auto p-1.5" onScroll={loadNextPage}>
 				{filtered.length === 0 && (
