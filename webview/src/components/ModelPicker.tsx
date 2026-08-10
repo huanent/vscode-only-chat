@@ -1,4 +1,3 @@
-import { Check, Sparkles } from 'lucide-react';
 import { useModelPicker } from '../hooks/useModelPicker';
 import type { ModelItem } from '../types';
 import { TextButton } from './ui/TextButton';
@@ -29,7 +28,7 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 				title={selectedModel ? `${selectedModel.providerName} · ${selectedModel.name}` : label}
 				onClick={() => setOpen(value => !value)}
 			>
-				<Sparkles className="shrink-0" size={14} aria-hidden="true" />
+				<span className="codicon codicon-sparkle shrink-0 text-[14px] leading-none" aria-hidden="true" />
 				<span className="overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
 			</TextButton>
 			{open && (
@@ -45,7 +44,7 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 									aria-selected={model.id === selectedModelId}
 									onClick={() => { onSelect(model.id); setOpen(false); }}
 								>
-									<Check className="model-check invisible" size={14} aria-hidden="true" />
+									<span className="codicon codicon-check model-check invisible text-[14px] leading-none" aria-hidden="true" />
 									<span className="grid min-w-0">
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap">{model.name}</span>
 										{model.family !== model.name && <small className="overflow-hidden text-[10px] text-ellipsis whitespace-nowrap text-muted">{model.family}</small>}

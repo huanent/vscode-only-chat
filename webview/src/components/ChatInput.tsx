@@ -1,4 +1,3 @@
-import { Send, Square } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { ModelItem } from '../types';
 import { ModelPicker } from './ModelPicker';
@@ -44,7 +43,7 @@ export function ChatInput({ inputRef, input, busy, editingIndex, models, selecte
 					<span className="flex-1" />
 					<IconButton
 						label={busy ? 'Stop generating' : 'Send'}
-						icon={busy ? <Square size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+						icon={busy ? <span className="codicon codicon-debug-stop text-[14px] leading-none" aria-hidden="true" /> : <span className="codicon codicon-send text-[14px] leading-none" aria-hidden="true" />}
 						size={IconButtonSize.Medium}
 						disabled={!busy && (!input.trim() || !selectedModelId)}
 						onClick={onSend}

@@ -1,4 +1,3 @@
-import { CircleAlert, MessagesSquare } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { StoredMessage } from '../types';
 import { useMessageNavigation } from '../hooks/useMessageNavigation';
@@ -40,7 +39,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 			<main className="h-full w-[calc(100%+12px)] overflow-x-hidden overflow-y-auto pr-4 pl-1" ref={navigation.containerRef} onScroll={navigation.handleScroll}>
 				{messages.length === 0 && (
 					<EmptyState
-						icon={<MessagesSquare className="text-icon" size={32} aria-hidden="true" />}
+						icon={<span className="codicon codicon-comment-discussion text-[32px]! leading-none text-icon" aria-hidden="true" />}
 						title={greeting}
 						titleAs="h1"
 						description={<>“{quote.text}” — {quote.author}</>}
@@ -67,7 +66,7 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 								)}
 								{message.error && (
 									<div className="mt-2 grid max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 rounded border border-error-border bg-error px-2.5 py-2 text-error-foreground" role="alert">
-										<CircleAlert className="mt-0.5 shrink-0" size={16} aria-hidden="true" />
+										<span className="codicon codicon-warning mt-0.5 shrink-0 text-[16px] leading-none" aria-hidden="true" />
 										<span className="min-w-0 flex-1 wrap-break-word">{message.error}</span>
 										<TextButton className="shrink-0 px-1.5 py-0.5 text-link hover:bg-toolbar-hover" disabled={busy} onClick={() => onRetry(index)}>Retry</TextButton>
 										{message.errorDetails && (

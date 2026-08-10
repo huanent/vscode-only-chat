@@ -8,7 +8,7 @@ export class ModelService implements vscode.Disposable {
 	private modelsPromise: Promise<readonly vscode.LanguageModelChat[]> | undefined;
 	private modelItems: ModelItem[] | undefined;
 	private modelItemsPromise: Promise<ModelItem[]> | undefined;
-	private cachedModelItems: ModelItem[];
+	private cachedModelItems: ModelItem[] = [];
 	private version = 0;
 	private readonly changeEmitter = new vscode.EventEmitter<number>();
 
@@ -17,19 +17,21 @@ export class ModelService implements vscode.Disposable {
 	constructor(private readonly context: vscode.ExtensionContext) {
 		const cachedModelItems = context.globalState.get<unknown>(storageKeys.cachedModels);
 		this.cachedModelItems = Array.isArray(cachedModelItems)
-			? cachedModelItems.filter(isModelItem)
+			? (cachedModelItems.filter(isModelItem) as ModelItem[])
 			: [];
 	}
 
+	private resetCaches(): void {
+		this.version++;
+		this.models = undefined;
+		this.modelsPromise = undefined;
+		this.modelItems = undefined;
+		this.modelItemsPromise = undefined;
+		this.changeEmitter.fire(this.version);
+	}
+
 	register(disposables: vscode.Disposable[]): void {
-		disposables.push(vscode.lm.onDidChangeChatModels(() => {
-			this.version++;
-			this.models = undefined;
-			this.modelsPromise = undefined;
-			this.modelItems = undefined;
-			this.modelItemsPromise = undefined;
-			this.changeEmitter.fire(this.version);
-		}));
+		disposables.push(vscode.lm.onDidChangeChatModels(() => this.resetCaches()));
 	}
 
 	dispose(): void {
@@ -45,59 +47,51 @@ export class ModelService implements vscode.Disposable {
 	}
 
 	async getModels(): Promise<readonly vscode.LanguageModelChat[]> {
-		if (this.models) {
-			return this.models;
-		}
+		if (this.models) return this.models;
 		if (!this.modelsPromise) {
-			const request = Promise.resolve(vscode.lm.selectChatModels()).then(models => {
-				if (this.modelsPromise === request) {
-					this.models = models;
-				}
+			const request = Promise.resolve(vscode.lm.selectChatModels());
+			this.modelsPromise = request.then(models => {
+				this.models = models;
 				return models;
 			}).finally(() => {
 				if (this.modelsPromise === request) {
 					this.modelsPromise = undefined;
 				}
 			});
-			this.modelsPromise = request;
 		}
-		return this.modelsPromise;
+		return this.modelsPromise!;
 	}
 
 	async getModelItems(models: readonly vscode.LanguageModelChat[]): Promise<ModelItem[]> {
-		if (this.modelItems) {
-			return this.modelItems;
+		if (this.modelItems) return this.modelItems;
+		if (this.modelItemsPromise) return this.modelItemsPromise;
+		const request = (async () => {
+			const providerNames = await getLanguageModelProviderNames(this.context, models);
+			const visibleModels = new Map<string, ModelItem>();
+			for (const model of models) {
+				const providerName = providerNames.get(model.id) ?? model.vendor;
+				const key = `${providerName}\u0000${model.name}`;
+				if (!visibleModels.has(key)) {
+					visibleModels.set(key, {
+						id: model.id,
+						name: model.name,
+						providerName,
+						family: model.family,
+					});
+				}
+			}
+			const modelItems = [...visibleModels.values()];
+			this.modelItems = modelItems;
+			this.cachedModelItems = modelItems.slice();
+			await this.context.globalState.update(storageKeys.cachedModels, this.cachedModelItems);
+			return modelItems;
+		})();
+		this.modelItemsPromise = request;
+		try {
+			return await request;
+		} finally {
+			if (this.modelItemsPromise === request) this.modelItemsPromise = undefined;
 		}
-		if (!this.modelItemsPromise) {
-			const request = getLanguageModelProviderNames(this.context, models).then(async providerNames => {
-				const visibleModels = new Map<string, ModelItem>();
-				for (const model of models) {
-					const providerName = providerNames.get(model.id) ?? model.vendor;
-					const key = `${providerName}\u0000${model.name}`;
-					if (!visibleModels.has(key)) {
-						visibleModels.set(key, {
-							id: model.id,
-							name: model.name,
-							providerName,
-							family: model.family,
-						});
-					}
-				}
-				const modelItems = [...visibleModels.values()];
-				if (this.modelItemsPromise === request) {
-					this.modelItems = modelItems;
-					this.cachedModelItems = modelItems;
-					await this.context.globalState.update(storageKeys.cachedModels, modelItems);
-				}
-				return modelItems;
-			}).finally(() => {
-				if (this.modelItemsPromise === request) {
-					this.modelItemsPromise = undefined;
-				}
-			});
-			this.modelItemsPromise = request;
-		}
-		return this.modelItemsPromise;
 	}
 }
 

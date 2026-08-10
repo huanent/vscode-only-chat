@@ -1,4 +1,3 @@
-import { MessageSquare, MessagesSquare, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useState, type Ref, type UIEvent } from 'react';
 import type { ConversationItem } from '../types';
 import { EmptyState } from './ui/EmptyState';
@@ -50,7 +49,7 @@ export function HistoryPanel({
 		<aside ref={panelRef} className="absolute top-11 left-2 z-115 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-widget-border bg-menu shadow-widget" aria-label="Conversation history">
 			<div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 border-b border-widget-border p-1.5">
 				<label className="grid h-8 min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center rounded border border-transparent bg-input px-2 text-input-foreground focus-within:border-focus">
-					<Search className="text-muted" size={14} aria-hidden="true" />
+					<span className="codicon codicon-search text-[14px] leading-none text-muted" aria-hidden="true" />
 					<input
 						className="h-full min-w-0 border-0 bg-transparent p-0 text-[13px] text-inherit outline-none placeholder:text-input-placeholder"
 						type="search"
@@ -60,13 +59,13 @@ export function HistoryPanel({
 						aria-label="Filter conversations"
 					/>
 				</label>
-				<IconButton label="Close conversation history" title="Close history" icon={<X size={14} aria-hidden="true" />} size={IconButtonSize.Large} onClick={onClose} />
+				<IconButton label="Close conversation history" title="Close history" icon={<span className="codicon codicon-close text-[14px] leading-none" aria-hidden="true" />} size={IconButtonSize.Large} onClick={onClose} />
 			</div>
 			<ul className="min-h-0 list-none overflow-y-auto p-1.5" onScroll={loadNextPage}>
 				{filtered.length === 0 && (
 					<li>
 						<EmptyState
-							icon={normalizedQuery ? <Search size={20} aria-hidden="true" /> : <MessagesSquare size={20} aria-hidden="true" />}
+							icon={normalizedQuery ? <span className="codicon codicon-search text-[20px] leading-none" aria-hidden="true" /> : <span className="codicon codicon-comment-discussion text-[20px] leading-none" aria-hidden="true" />}
 							title={normalizedQuery ? 'No matching conversations' : 'No conversations yet'}
 							description={normalizedQuery ? 'Try a different keyword.' : 'Your recent chats will appear here.'}
 							className="min-h-40 gap-2 p-6 text-xs leading-4 text-muted"
@@ -80,13 +79,13 @@ export function HistoryPanel({
 						<ul className="m-0 list-none p-0">
 							{group.items.map(conversation => (
 								<li className={`group grid grid-cols-[minmax(0,1fr)_32px] items-center rounded p-1 hover:bg-hover ${conversation.id === currentConversationId ? 'bg-selection text-selection-foreground' : ''}`} key={conversation.id}>
-									<TextButton className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center pr-1 pl-2 text-left text-[13px] text-inherit" onClick={() => onSelect(conversation.id)}>
-										<MessageSquare size={14} aria-hidden="true" />
+									<TextButton className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center pl-2 text-left text-4 text-inherit" onClick={() => onSelect(conversation.id)}>
+										<span className="codicon codicon-comment text-[14px] leading-none" aria-hidden="true" />
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap leading-5">{conversation.summary}</span>
 									</TextButton>
 									<IconButton
 										label="Delete conversation"
-										icon={<Trash2 size={14} aria-hidden="true" />}
+										icon={<span className="codicon codicon-trash text-[14px] leading-none" aria-hidden="true" />}
 										size={IconButtonSize.Medium}
 										className={`opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 ${conversation.id === currentConversationId ? 'opacity-100' : ''}`}
 										onClick={() => onDelete(conversation.id)}

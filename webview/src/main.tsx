@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import '@vscode/codicons/dist/codicon.css';
 import 'katex/dist/katex.min.css';
 import 'markdown-it-texmath/css/texmath.css';
 import './styles.css';

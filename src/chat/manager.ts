@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 import type { StoredConversation } from '../conversation';
 import { commandIds, editorViewType, storageKeys } from './constants';
-import { ConversationStorage } from './conversationStorage';
+import { ConversationStorage } from './storage';
 import { OnlyChatDocument } from './document';
 import { ModelService } from './modelService';
 import { OnlyChatPanelController } from './panelController';

@@ -1,4 +1,3 @@
-import { Check, Copy, Pencil, RefreshCw } from 'lucide-react';
 import type { StoredMessage } from '../types';
 import { IconButton, IconButtonVariant } from './ui/IconButton';
 
@@ -15,12 +14,12 @@ export function MessageActions({ message, busy, copied, onEdit, onRegenerate, on
 	return (
 		<>
 			{message.role === 'user' && (
-				<IconButton label="Edit message" icon={<Pencil size={14} aria-hidden="true" />} variant={IconButtonVariant.Ghost} disabled={busy} onClick={onEdit} />
+				<IconButton label="Edit message" icon={<span className="codicon codicon-edit text-[14px] leading-none" aria-hidden="true" />} variant={IconButtonVariant.Ghost} disabled={busy} onClick={onEdit} />
 			)}
 			{message.role === 'assistant' && (
-				<IconButton label="Regenerate response" icon={<RefreshCw size={14} aria-hidden="true" />} variant={IconButtonVariant.Ghost} disabled={busy} onClick={onRegenerate} />
+				<IconButton label="Regenerate response" icon={<span className="codicon codicon-refresh text-[14px] leading-none" aria-hidden="true" />} variant={IconButtonVariant.Ghost} disabled={busy} onClick={onRegenerate} />
 			)}
-			<IconButton label={copied ? 'Copied' : 'Copy message'} icon={copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />} variant={IconButtonVariant.Ghost} onClick={onCopy} />
+			<IconButton label={copied ? 'Copied' : 'Copy message'} icon={copied ? <span className="codicon codicon-check text-[14px] leading-none" aria-hidden="true" /> : <span className="codicon codicon-copy text-[14px] leading-none" aria-hidden="true" />} variant={IconButtonVariant.Ghost} onClick={onCopy} />
 		</>
 	);
 }
