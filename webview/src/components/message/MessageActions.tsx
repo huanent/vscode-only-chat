@@ -1,5 +1,5 @@
-import type { StoredMessage } from '../types';
-import { IconButton, IconButtonVariant } from './ui/IconButton';
+import type { StoredMessage } from '../../types';
+import { IconButton, IconButtonVariant } from '../ui/IconButton';
 
 type MessageActionsProps = {
 	message: StoredMessage;

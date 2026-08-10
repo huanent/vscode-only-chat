@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { StoredMessage } from '../types';
-import { useMessageNavigation } from '../hooks/useMessageNavigation';
-import { getRandomQuote } from '../lib/quotes';
+import { useMessageNavigation } from '../../hooks/useMessageNavigation';
+import { getRandomQuote } from '../../lib/quotes';
+import type { StoredMessage } from '../../types';
 import { MessageAnchors } from './MessageAnchors';
-import { MessageItem } from './message/MessageItem';
-import { EmptyState } from './ui/EmptyState';
+import { MessageItem } from './MessageItem';
+import { EmptyState } from '../ui/EmptyState';
 
 type MessageListProps = {
 	messages: StoredMessage[];

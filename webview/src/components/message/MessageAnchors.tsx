@@ -1,4 +1,4 @@
-import type { StoredMessage } from '../types';
+import type { StoredMessage } from '../../types';
 
 type MessageAnchorsProps = {
 	messages: StoredMessage[];

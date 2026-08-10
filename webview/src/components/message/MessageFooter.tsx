@@ -1,5 +1,5 @@
 import type { StoredMessage, TokenUsage } from '../../types';
-import { MessageActions } from '../MessageActions';
+import { MessageActions } from './MessageActions';
 
 type MessageFooterProps = {
 	message: StoredMessage;
@@ -11,8 +11,12 @@ type MessageFooterProps = {
 };
 
 export function MessageFooter({ message, busy, copied, onEdit, onRegenerate, onCopy }: MessageFooterProps) {
+	const visibilityClassName = message.role === 'assistant'
+		? ''
+		: 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto';
+
 	return (
-		<div className="flex min-h-7 max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+		<div className={`flex min-h-7 max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 ${visibilityClassName}`}>
 			<MessageActions
 				message={message}
 				busy={busy}

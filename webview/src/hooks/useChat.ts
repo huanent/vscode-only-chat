@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { type PendingRequest, updateAssistant } from '../components/message/chatMessages';
 import { postMessage } from '../services/vscode';
 import type { ConversationItem, InboundMessage, ModelItem, StoredMessage } from '../types';
-
-type PendingRequest = {
-	requestId: string;
-	text: string;
-	modelId: string;
-	editMessageIndex?: number;
-	assistantIndex: number;
-};
 
 export function useChat() {
 	const [messages, setMessages] = useState<StoredMessage[]>([]);
@@ -249,13 +242,4 @@ export function useChat() {
 		retry,
 		send,
 	};
-}
-
-function updateAssistant(
-	messages: StoredMessage[],
-	index: number | undefined,
-	update: (message: StoredMessage) => StoredMessage,
-): StoredMessage[] {
-	if (index === undefined || messages[index]?.role !== 'assistant') return messages;
-	return messages.map((message, messageIndex) => messageIndex === index ? update(message) : message);
 }

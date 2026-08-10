@@ -1,6 +1,6 @@
 import { ChatInput } from './components/ChatInput';
 import { HistoryPanel } from './components/HistoryPanel';
-import { MessageList } from './components/MessageList';
+import { MessageList } from './components/message/MessageList';
 import { IconButton, IconButtonSize } from './components/ui/IconButton';
 import { useChat } from './hooks/useChat';
 
