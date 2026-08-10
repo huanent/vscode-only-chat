@@ -1,25 +1,28 @@
 # Only Chat
 
-A focused AI chat editor for VS Code, powered by the Language Model API.
+A focused AI chat editor for VS Code, powered by the Language Model API. Chat with any model available in VS Code without leaving your editor.
+
+![Only Chat screenshot](resources/screenshot.png)
 
 ## Features
 
-- Use any language model available in VS Code and switch models per request.
-- Stream responses with support for Markdown, syntax highlighting, tables, and math.
-- Create, switch, and delete conversations stored in VS Code local state or a custom directory.
-- Open multiple chat tabs and continue from shared conversation history.
-- Copy responses, edit an earlier message, regenerate the following conversation, or stop an active request.
-- Configure a custom conversation prompt from VS Code settings.
+- **Model selection** — Use any language model available in VS Code and switch models for each request.
+- **Rich responses** — Stream Markdown with syntax highlighting, tables, and math.
+- **Conversation history** — Create, switch, and delete conversations stored in VS Code or a custom directory.
+- **Multiple tabs** — Open several chat tabs and continue from shared conversation history.
+- **Message controls** — Copy responses, edit earlier messages, regenerate the following conversation, or stop an active request.
+- **Custom instructions** — Add a conversation prompt through VS Code settings.
 
-## Getting Started
+## Usage
 
-1. Install and sign in to a VS Code extension that provides language models, such as GitHub Copilot.
-2. Run **Only Chat: Open Chat** from the Command Palette or use the shortcut below.
-3. Select a model, enter a message, and press `Enter`. Use `Shift+Enter` for a new line.
+1. Install and sign in to an extension that provides language models, such as GitHub Copilot.
+2. Run **Only Chat: Open Chat** from the Command Palette, or use the shortcut below.
+3. Select a model and enter a message.
+4. Press `Enter` to send, or `Shift+Enter` to insert a new line.
 
 VS Code may request permission to access language models when you send the first message.
 
-## Shortcuts
+## Keyboard Shortcuts
 
 | Action | macOS | Windows / Linux |
 | --- | --- | --- |
@@ -28,5 +31,7 @@ VS Code may request permission to access language models when you send the first
 
 ## Settings
 
-- `onlyChat.prompt`: instructions added to every conversation.
-- `onlyChat.storagePath`: machine-local absolute directory used to store each conversation as a separate JSON file. It is not included in VS Code Settings Sync. Supports `~`; reload VS Code after changing it.
+| Setting | Description |
+| --- | --- |
+| `onlyChat.prompt` | Instructions added to every conversation. |
+| `onlyChat.storagePath` | Machine-local directory used to store each conversation as a separate JSON file. Supports `~`; reload VS Code after changing it. The value is not included in Settings Sync. |
