@@ -14,7 +14,7 @@ export class ConversationStorage {
 
 	static async create(context: vscode.ExtensionContext): Promise<ConversationStorage> {
 		const configuredPath = vscode.workspace.getConfiguration('onlyChat')
-			.get<string>('conversationStoragePath', '')
+			.get<string>('storagePath', '')
 			.trim();
 		const storageUri = configuredPath ? vscode.Uri.file(resolveStoragePath(configuredPath)) : undefined;
 		if (storageUri) {

@@ -29,11 +29,4 @@ VS Code may request permission to access language models when you send the first
 ## Settings
 
 - `onlyChat.prompt`: instructions added to every conversation.
-- `onlyChat.conversationStoragePath`: machine-local absolute directory used to store each conversation as a separate JSON file. It is not included in VS Code Settings Sync. Supports `~`; reload VS Code after changing it.
-
-## Development
-
-```bash
-npm install
-npm run build
-```
+- `onlyChat.storagePath`: machine-local absolute directory used to store each conversation as a separate JSON file. It is not included in VS Code Settings Sync. Supports `~`; reload VS Code after changing it.
