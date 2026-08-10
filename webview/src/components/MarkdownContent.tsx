@@ -1,4 +1,6 @@
 import { useMarkdownContent } from '../hooks/useMarkdownContent';
+import 'katex/dist/katex.min.css';
+import 'markdown-it-texmath/css/texmath.css';
 
 type MarkdownContentProps = {
 	text: string;

@@ -49,15 +49,19 @@ export class ModelService implements vscode.Disposable {
 	async getModels(): Promise<readonly vscode.LanguageModelChat[]> {
 		if (this.models) return this.models;
 		if (!this.modelsPromise) {
-			const request = Promise.resolve(vscode.lm.selectChatModels());
-			this.modelsPromise = request.then(models => {
-				this.models = models;
+			const request = Promise.resolve(vscode.lm.selectChatModels()).then(models => {
+				if (models.length > 0) {
+					this.models = models;
+				}
 				return models;
-			}).finally(() => {
+			});
+			this.modelsPromise = request;
+			const clearRequest = () => {
 				if (this.modelsPromise === request) {
 					this.modelsPromise = undefined;
 				}
-			});
+			};
+			void request.then(clearRequest, clearRequest);
 		}
 		return this.modelsPromise!;
 	}

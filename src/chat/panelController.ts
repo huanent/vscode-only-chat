@@ -186,6 +186,9 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			if (version !== this.modelService.currentVersion) {
 				return;
 			}
+			if (models.length === 0) {
+				throw new Error('No language models are available. Make sure a model provider is installed and signed in locally.');
+			}
 			const modelItems = await this.modelService.getModelItems(models);
 			if (version !== this.modelService.currentVersion) {
 				return;

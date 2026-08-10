@@ -22,13 +22,13 @@ export function ChatInput({ inputRef, input, busy, editingIndex, models, selecte
 			<div className={`relative rounded-lg border bg-input transition-colors duration-75 focus-within:border-focus ${editingIndex !== undefined ? 'border-focus shadow-[0_0_0_1px_var(--color-focus)]' : 'border-border'}`}>
 				<div
 					ref={inputRef}
-					className="message-input min-h-11 max-h-45 w-full overflow-y-auto px-3 pt-2 pb-1 text-[13px] leading-[1.45] text-input-foreground outline-none whitespace-pre-wrap wrap-break-word data-[disabled=true]:opacity-60"
+					className="message-input min-h-9 max-h-45 w-full overflow-y-auto px-3 pt-2 pb-1 text-3 leading-[1.45] text-input-foreground outline-none whitespace-pre-wrap wrap-break-word data-[disabled=true]:opacity-60"
 					role="textbox"
 					aria-label="Message"
 					aria-multiline="true"
 					contentEditable={busy ? false : 'plaintext-only'}
 					data-disabled={busy}
-					data-placeholder="What’s on your mind?"
+					data-placeholder="What shall we explore together?"
 					autoFocus
 					onInput={event => onInputChange(event.currentTarget.textContent ?? '')}
 					onKeyDown={event => {

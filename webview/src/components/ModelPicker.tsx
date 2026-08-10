@@ -14,7 +14,7 @@ export function ModelPicker({ models, selectedModelId, disabled, error, onSelect
 	const { open, setOpen, rootRef } = useModelPicker(disabled);
 	const selectedModel = models.find(model => model.id === selectedModelId);
 
-	const label = error ? 'Failed to load models' : selectedModel?.name ?? (models.length ? 'Select model' : 'Loading models...');
+	const label = error ? 'No models available' : selectedModel?.name ?? (models.length ? 'Select model' : 'Loading models...');
 	const providers = new Map<string, ModelItem[]>();
 	for (const model of models) providers.set(model.providerName, [...(providers.get(model.providerName) ?? []), model]);
 
