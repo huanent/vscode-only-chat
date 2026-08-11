@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
-import type { StoredConversation } from '../conversation';
+import type { StoredSession } from '../session';
 import { commandIds, editorViewType, storageKeys } from './constants';
-import { ConversationStorage } from './storage';
+import { SessionStorage } from './storage';
 import { OnlyChatDocument } from './document';
 import { ModelService } from './modelService';
 import { OnlyChatPanelController } from './panelController';
 
 export class OnlyChatManager implements vscode.Disposable {
-	private readonly conversations: StoredConversation[];
+	private readonly sessions: StoredSession[];
 	private readonly controllers = new Set<OnlyChatPanelController>();
 	private readonly modelService: ModelService;
 	private readonly disposables: vscode.Disposable[] = [];
@@ -16,28 +16,28 @@ export class OnlyChatManager implements vscode.Disposable {
 
 	private constructor(
 		private readonly context: vscode.ExtensionContext,
-		private readonly conversationStorage: ConversationStorage,
-		conversations: StoredConversation[],
+		private readonly sessionStorage: SessionStorage,
+		sessions: StoredSession[],
 	) {
-		this.conversations = conversations;
+		this.sessions = sessions;
 		this.modelService = new ModelService(context);
 	}
 
 	static async create(context: vscode.ExtensionContext): Promise<OnlyChatManager> {
-		const conversationStorage = await ConversationStorage.create(context);
-		const conversations = await conversationStorage.load();
-		return new OnlyChatManager(context, conversationStorage, conversations);
+		const sessionStorage = await SessionStorage.create(context);
+		const sessions = await sessionStorage.load();
+		return new OnlyChatManager(context, sessionStorage, sessions);
 	}
 
 	register(): void {
 		this.modelService.register(this.disposables);
 		const provider: vscode.CustomReadonlyEditorProvider<OnlyChatDocument> = {
-			openCustomDocument: uri => new OnlyChatDocument(uri, this.conversations),
+			openCustomDocument: uri => new OnlyChatDocument(uri, this.sessions),
 			resolveCustomEditor: (document, panel) => this.configurePanel(document, panel),
 		};
 		this.disposables.push(
 			vscode.commands.registerCommand(commandIds.open, () => this.open(true)),
-			vscode.commands.registerCommand(commandIds.newConversation, () => this.open(true)),
+			vscode.commands.registerCommand(commandIds.newChat, () => this.open(true)),
 			vscode.commands.registerCommand(commandIds.newTab, () => this.open(false)),
 			vscode.window.registerCustomEditorProvider(editorViewType, provider, {
 				webviewOptions: { retainContextWhenHidden: true },
@@ -67,18 +67,17 @@ export class OnlyChatManager implements vscode.Disposable {
 		}
 	}
 
-	async persist(currentConversationId: string): Promise<void> {
+	async persist(currentSessionId: string): Promise<void> {
 		await Promise.all([
-			this.conversationStorage.persist(this.conversations),
-			this.context.globalState.update(storageKeys.currentConversation, currentConversationId),
-			this.context.globalState.update(storageKeys.legacyConversation, undefined),
+			this.sessionStorage.persist(this.sessions),
+			this.context.globalState.update(storageKeys.currentSession, currentSessionId),
 		]);
 	}
 
 	private async open(reuseCurrent: boolean): Promise<void> {
 		if (reuseCurrent && this.currentController) {
 			this.currentController.reveal();
-			await this.currentController.newConversation();
+			await this.currentController.newChat();
 			return;
 		}
 		await vscode.commands.executeCommand('vscode.openWith', createEditorUri(), editorViewType, {
@@ -112,7 +111,7 @@ export class OnlyChatManager implements vscode.Disposable {
 function createEditorUri(): vscode.Uri {
 	return vscode.Uri.from({
 		scheme: 'only-chat',
-		path: '/New conversation',
+		path: '/Only Chat',
 		query: new URLSearchParams({ id: randomUUID() }).toString(),
 	});
 }

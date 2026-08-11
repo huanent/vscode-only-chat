@@ -10,18 +10,18 @@ export function App() {
 	return (
 		<div className="relative h-full px-2">
 			<div className="absolute top-1.5 left-1.5 z-20 flex gap-1">
-				<IconButton ref={chat.historyButtonRef} label="Show conversation history" icon={<span className="codicon codicon-menu text-[14px] leading-none" aria-hidden="true" />} size={IconButtonSize.Medium} aria-expanded={chat.historyVisible} onClick={() => chat.setHistoryVisible(value => !value)} />
+				<IconButton ref={chat.historyButtonRef} label="Show chat history" icon={<span className="codicon codicon-menu text-[14px] leading-none" aria-hidden="true" />} size={IconButtonSize.Medium} aria-expanded={chat.historyVisible} onClick={() => chat.setHistoryVisible(value => !value)} />
 			</div>
 			{chat.historyVisible && (
 				<HistoryPanel
 					panelRef={chat.historyPanelRef}
-					conversations={chat.conversations}
-					currentConversationId={chat.currentConversationId}
+					sessions={chat.sessions}
+					currentSessionId={chat.currentSessionId}
 					query={chat.historyQuery}
 					onQueryChange={chat.setHistoryQuery}
 					onClose={() => chat.setHistoryVisible(false)}
-					onSelect={chat.selectConversation}
-					onDelete={chat.deleteConversation}
+					onSelect={chat.selectSession}
+					onDelete={chat.deleteSession}
 				/>
 			)}
 			<div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]">

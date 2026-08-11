@@ -22,7 +22,7 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
 		@media (prefers-reduced-motion: no-preference) { .boot-shell-line { animation: boot-pulse 1.2s ease-in-out infinite; } }
 		@keyframes boot-pulse { 50% { opacity: .35; } }
 	</style>
-	<title>New conversation</title>
+	<title>New Chat</title>
 </head>
 <body>
 	<div id="root">

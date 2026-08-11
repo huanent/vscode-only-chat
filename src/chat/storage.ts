@@ -1,18 +1,18 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { createConversation, type StoredConversation, type StoredMessage } from '../conversation';
+import type { StoredSession } from '../session';
 import { storageKeys } from './constants';
 
-export class ConversationStorage {
-	private readonly persistedConversationIds = new Set<string>();
+export class SessionStorage {
+	private readonly persistedSessionIds = new Set<string>();
 
 	private constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly storageUri: vscode.Uri | undefined,
 	) { }
 
-	static async create(context: vscode.ExtensionContext): Promise<ConversationStorage> {
+	static async create(context: vscode.ExtensionContext): Promise<SessionStorage> {
 		const configuredPath = vscode.workspace.getConfiguration('onlyChat')
 			.get<string>('storagePath', '')
 			.trim();
@@ -20,80 +20,64 @@ export class ConversationStorage {
 		if (storageUri) {
 			await vscode.workspace.fs.createDirectory(storageUri);
 		}
-		return new ConversationStorage(context, storageUri);
+		return new SessionStorage(context, storageUri);
 	}
 
-	async load(): Promise<StoredConversation[]> {
+	async load(): Promise<StoredSession[]> {
 		if (!this.storageUri) {
 			return this.loadFromGlobalState();
 		}
 
-		const conversations = await this.loadFromDirectory();
-		if (conversations.length > 0) {
-			return conversations;
-		}
-
-		const legacyConversations = this.loadFromGlobalState();
-		if (legacyConversations.length > 0) {
-			await this.persist(legacyConversations);
-		}
-		return legacyConversations;
+		return this.loadFromDirectory();
 	}
 
-	async persist(conversations: readonly StoredConversation[]): Promise<void> {
+	async persist(sessions: readonly StoredSession[]): Promise<void> {
 		if (!this.storageUri) {
-			await this.context.globalState.update(storageKeys.conversations, conversations);
+			await this.context.globalState.update(storageKeys.sessions, sessions);
 			return;
 		}
 
-		const currentIds = new Set(conversations.map(conversation => conversation.id));
+		const currentIds = new Set(sessions.map(session => session.id));
 		await Promise.all([
-			...conversations.map(conversation => this.writeConversation(conversation)),
-			...[...this.persistedConversationIds]
+			...sessions.map(session => this.writeSession(session)),
+			...[...this.persistedSessionIds]
 				.filter(id => !currentIds.has(id))
-				.map(id => this.deleteConversation(id)),
+				.map(id => this.deleteSession(id)),
 		]);
-		this.persistedConversationIds.clear();
-		currentIds.forEach(id => this.persistedConversationIds.add(id));
+		this.persistedSessionIds.clear();
+		currentIds.forEach(id => this.persistedSessionIds.add(id));
 	}
 
-	private loadFromGlobalState(): StoredConversation[] {
-		const conversations = this.context.globalState.get<StoredConversation[]>(storageKeys.conversations)
-			?? this.context.globalState.get<StoredConversation[]>(storageKeys.legacyConversations, []);
-		if (conversations.length > 0) {
-			return conversations;
-		}
-
-		const legacyMessages = this.context.globalState.get<StoredMessage[]>(storageKeys.legacyConversation, []);
-		return legacyMessages.length > 0 ? [createConversation(legacyMessages)] : [];
+	private loadFromGlobalState(): StoredSession[] {
+		return this.context.globalState.get<StoredSession[]>(storageKeys.sessions, []);
 	}
 
-	private async loadFromDirectory(): Promise<StoredConversation[]> {
+	private async loadFromDirectory(): Promise<StoredSession[]> {
 		const entries = await vscode.workspace.fs.readDirectory(this.storageUri!);
-		const conversations: StoredConversation[] = [];
+		const sessions: StoredSession[] = [];
 		for (const [name, type] of entries) {
 			if (type !== vscode.FileType.File || path.extname(name).toLowerCase() !== '.json') {
 				continue;
 			}
 			try {
 				const content = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.storageUri!, name));
-				const conversation = JSON.parse(new TextDecoder().decode(content));
-				if (isStoredConversation(conversation) && name === `${conversation.id}.json`) {
-					conversations.push(conversation);
-					this.persistedConversationIds.add(conversation.id);
+				const session = JSON.parse(new TextDecoder().decode(content));
+				if (isStoredSession(session) && name === `${session.id}.json`) {
+					sessions.push(session);
+					this.persistedSessionIds.add(session.id);
 				}
 			} catch { }
 		}
-		return conversations;
+		return sessions;
 	}
 
-	private async writeConversation(conversation: StoredConversation): Promise<void> {
-		const uri = vscode.Uri.joinPath(this.storageUri!, `${conversation.id}.json`);
-		const content = new TextEncoder().encode(`${JSON.stringify(conversation, undefined, 2)}\n`);
+	private async writeSession(session: StoredSession): Promise<void> {
+		const uri = vscode.Uri.joinPath(this.storageUri!, `${session.id}.json`);
+		const content = new TextEncoder().encode(`${JSON.stringify(session, undefined, 2)}\n`);
 		await vscode.workspace.fs.writeFile(uri, content);
 	}
 
-	private async deleteConversation(id: string): Promise<void> {
+	private async deleteSession(id: string): Promise<void> {
 		try {
 			await vscode.workspace.fs.delete(vscode.Uri.joinPath(this.storageUri!, `${id}.json`));
 		} catch (error) {
@@ -111,21 +95,21 @@ function resolveStoragePath(configuredPath: string): string {
 			? path.join(os.homedir(), configuredPath.slice(2))
 			: configuredPath;
 	if (!path.isAbsolute(expandedPath)) {
-		throw new Error('Only Chat conversation storage path must be an absolute path.');
+		throw new Error('Only Chat storage path must be an absolute path.');
 	}
 	return expandedPath;
 }
 
-function isStoredConversation(value: unknown): value is StoredConversation {
+function isStoredSession(value: unknown): value is StoredSession {
 	if (!value || typeof value !== 'object') {
 		return false;
 	}
-	const conversation = value as Partial<StoredConversation>;
-	return typeof conversation.id === 'string'
-		&& typeof conversation.summary === 'string'
-		&& typeof conversation.updatedAt === 'number'
-		&& Array.isArray(conversation.messages)
-		&& conversation.messages.every(message => Boolean(message)
+	const session = value as Partial<StoredSession>;
+	return typeof session.id === 'string'
+		&& typeof session.summary === 'string'
+		&& typeof session.updatedAt === 'number'
+		&& Array.isArray(session.messages)
+		&& session.messages.every(message => Boolean(message)
 			&& (message.role === 'user' || message.role === 'assistant')
 			&& typeof message.content === 'string'
 			&& (message.model === undefined || typeof message.model === 'string')

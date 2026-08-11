@@ -3,11 +3,11 @@ import * as vscode from 'vscode';
 import {
 	createSummary,
 	createTabTitle,
-	getConversationSummary,
+	getSessionSummary,
 	normalizeGeneratedSummary,
-	type StoredConversation,
+	type StoredSession,
 	type TokenUsage,
-} from '../conversation';
+} from '../session';
 import { getWebviewHtml } from '../webview';
 import { storageKeys, webviewFocusContextKey } from './constants';
 import type { OnlyChatDocument } from './document';
@@ -17,7 +17,7 @@ import type { ModelService } from './modelService';
 
 export class OnlyChatPanelController implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[] = [];
-	private currentConversationId: string = randomUUID();
+	private currentSessionId: string = randomUUID();
 	private cancellation: vscode.CancellationTokenSource | undefined;
 	private readonly summaryCancellations = new Map<string, vscode.CancellationTokenSource>();
 
@@ -65,11 +65,11 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		this.panel.reveal(vscode.ViewColumn.Active);
 	}
 
-	async newConversation(): Promise<void> {
+	async newChat(): Promise<void> {
 		this.cancel();
-		this.currentConversationId = randomUUID();
-		await this.manager.persist(this.currentConversationId);
-		await this.renderConversations();
+		this.currentSessionId = randomUUID();
+		await this.manager.persist(this.currentSessionId);
+		await this.renderSessions();
 	}
 
 	private async handleMessage(message: WebviewMessage): Promise<void> {
@@ -77,7 +77,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			switch (message.type) {
 				case 'ready':
 					await this.postCachedModels();
-					await Promise.all([this.loadModels(), this.renderConversations()]);
+					await Promise.all([this.loadModels(), this.renderSessions()]);
 					return;
 				case 'focusChanged':
 					await this.setWebviewFocus(message.focused);
@@ -88,14 +88,14 @@ export class OnlyChatPanelController implements vscode.Disposable {
 				case 'selectModel':
 					await this.context.globalState.update(storageKeys.selectedModel, message.modelId);
 					return;
-				case 'newConversation':
-					await this.newConversation();
+				case 'newChat':
+					await this.newChat();
 					return;
-				case 'selectConversation':
-					await this.selectConversation(message.conversationId);
+				case 'selectSession':
+					await this.selectSession(message.sessionId);
 					return;
-				case 'deleteConversation':
-					await this.deleteConversation(message.conversationId);
+				case 'deleteSession':
+					await this.deleteSession(message.sessionId);
 					return;
 				case 'cancel':
 					this.cancel();
@@ -113,71 +113,71 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		return vscode.commands.executeCommand('setContext', webviewFocusContextKey, focused && this.panel.active);
 	}
 
-	private getConversationItems() {
-		return [...this.document.conversations]
+	private getSessionItems() {
+		return [...this.document.sessions]
 			.sort((left, right) => right.updatedAt - left.updatedAt)
-			.map(conversation => ({
-				id: conversation.id,
-				summary: getConversationSummary(conversation),
-				updatedAt: conversation.updatedAt,
+			.map(session => ({
+				id: session.id,
+				summary: getSessionSummary(session),
+				updatedAt: session.updatedAt,
 			}));
 	}
 
-	private async refreshConversationHistory(): Promise<void> {
-		const conversations = this.getConversationItems();
+	private async refreshSessionHistory(): Promise<void> {
+		const sessions = this.getSessionItems();
 		await Promise.all(this.manager.getEditors()
 			.filter(editor => editor !== this)
-			.map(editor => editor.panel.webview.postMessage({ type: 'conversationHistory', conversations })));
+			.map(editor => editor.panel.webview.postMessage({ type: 'sessionHistory', sessions })));
 	}
 
-	private async renderConversations(): Promise<void> {
-		const current = this.getCurrentConversation();
+	private async renderSessions(): Promise<void> {
+		const current = this.getCurrentSession();
 		this.updateTitle(current);
 		await this.panel.webview.postMessage({
-			type: 'conversations',
-			currentConversationId: current?.id ?? this.currentConversationId,
+			type: 'sessions',
+			currentSessionId: current?.id ?? this.currentSessionId,
 			messages: current?.messages ?? [],
-			conversations: this.getConversationItems(),
+			sessions: this.getSessionItems(),
 		});
 	}
 
-	private updateTitle(conversation = this.getCurrentConversation()): void {
-		this.panel.title = conversation ? createTabTitle(getConversationSummary(conversation)) : 'New conversation';
+	private updateTitle(session = this.getCurrentSession()): void {
+		this.panel.title = session ? createTabTitle(getSessionSummary(session)) : 'Only Chat';
 	}
 
-	private getCurrentConversation(): StoredConversation | undefined {
-		return this.document.conversations.find(conversation => conversation.id === this.currentConversationId);
+	private getCurrentSession(): StoredSession | undefined {
+		return this.document.sessions.find(session => session.id === this.currentSessionId);
 	}
 
-	private async selectConversation(conversationId: string): Promise<void> {
-		if (!this.document.conversations.some(conversation => conversation.id === conversationId)) {
+	private async selectSession(sessionId: string): Promise<void> {
+		if (!this.document.sessions.some(session => session.id === sessionId)) {
 			return;
 		}
 		this.cancel();
-		this.currentConversationId = conversationId;
-		await this.context.globalState.update(storageKeys.currentConversation, conversationId);
-		await this.renderConversations();
+		this.currentSessionId = sessionId;
+		await this.context.globalState.update(storageKeys.currentSession, sessionId);
+		await this.renderSessions();
 	}
 
-	private async deleteConversation(conversationId: string): Promise<void> {
-		if (!this.document.conversations.some(candidate => candidate.id === conversationId)) {
+	private async deleteSession(sessionId: string): Promise<void> {
+		if (!this.document.sessions.some(candidate => candidate.id === sessionId)) {
 			return;
 		}
-		this.cancelSummary(conversationId);
-		this.document.conversations.splice(
+		this.cancelSummary(sessionId);
+		this.document.sessions.splice(
 			0,
-			this.document.conversations.length,
-			...this.document.conversations.filter(candidate => candidate.id !== conversationId),
+			this.document.sessions.length,
+			...this.document.sessions.filter(candidate => candidate.id !== sessionId),
 		);
 		for (const editor of this.manager.getEditors()) {
-			if (editor.currentConversationId === conversationId) {
+			if (editor.currentSessionId === sessionId) {
 				editor.cancel();
-				editor.currentConversationId = [...this.document.conversations]
+				editor.currentSessionId = [...this.document.sessions]
 					.sort((left, right) => right.updatedAt - left.updatedAt)[0]?.id ?? randomUUID();
 			}
 		}
-		await this.manager.persist(this.currentConversationId);
-		await Promise.all(this.manager.getEditors().map(editor => editor.renderConversations()));
+		await this.manager.persist(this.currentSessionId);
+		await Promise.all(this.manager.getEditors().map(editor => editor.renderSessions()));
 	}
 
 	private async loadModels(version = this.modelService.currentVersion): Promise<void> {
@@ -215,8 +215,7 @@ export class OnlyChatPanelController implements vscode.Disposable {
 	private postModels(models: readonly ModelItem[]): Thenable<boolean> {
 		return this.panel.webview.postMessage({
 			type: 'models',
-			selectedModelId: this.context.globalState.get<string>(storageKeys.selectedModel)
-				?? this.context.globalState.get<string>(storageKeys.legacySelectedModel),
+			selectedModelId: this.context.globalState.get<string>(storageKeys.selectedModel),
 			models,
 		});
 	}
@@ -235,10 +234,10 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			return;
 		}
 
-		const conversationId = this.currentConversationId;
-		const conversation = this.getCurrentConversation();
+		const sessionId = this.currentSessionId;
+		const session = this.getCurrentSession();
 		if (editMessageIndex !== undefined
-			&& (!conversation || !Number.isInteger(editMessageIndex) || conversation.messages[editMessageIndex]?.role !== 'user')) {
+			&& (!session || !Number.isInteger(editMessageIndex) || session.messages[editMessageIndex]?.role !== 'user')) {
 			await this.panel.webview.postMessage({
 				type: 'error',
 				requestId,
@@ -250,26 +249,25 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		const cancellation = new vscode.CancellationTokenSource();
 		this.cancellation = cancellation;
 		let editApplied = false;
-		if (conversation && editMessageIndex !== undefined) {
-			conversation.messages.splice(editMessageIndex);
+		if (session && editMessageIndex !== undefined) {
+			session.messages.splice(editMessageIndex);
 			editApplied = true;
-			conversation.updatedAt = Date.now();
+			session.updatedAt = Date.now();
 			if (editMessageIndex === 0) {
-				conversation.summary = createSummary(userText);
+				session.summary = createSummary(userText);
 				this.panel.title = createTabTitle(userText);
 			}
-			await this.manager.persist(this.currentConversationId);
-			await this.refreshConversationHistory();
+			await this.manager.persist(this.currentSessionId);
+			await this.refreshSessionHistory();
 		}
-		if (!conversation) {
+		if (!session) {
 			this.panel.title = createTabTitle(userText);
 		}
 
-		const prompt = (vscode.workspace.getConfiguration('onlyChat').get<string>('prompt')
-			?? vscode.workspace.getConfiguration('temporaryChat').get<string>('prompt', '')).trim();
+		const prompt = vscode.workspace.getConfiguration('onlyChat').get<string>('prompt', '').trim();
 		const requestMessages = [
 			...(prompt ? [vscode.LanguageModelChatMessage.User(prompt, 'instructions')] : []),
-			...(conversation?.messages ?? []).map(message => message.role === 'user'
+			...(session?.messages ?? []).map(message => message.role === 'user'
 				? vscode.LanguageModelChatMessage.User(message.content)
 				: vscode.LanguageModelChatMessage.Assistant(message.content)),
 			vscode.LanguageModelChatMessage.User(userText),
@@ -283,8 +281,8 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			if (!model) {
 				throw new Error('No language model is available. Configure or sign in to a model provider in VS Code.');
 			}
-			const summaryPromise = !conversation || editMessageIndex === 0
-				? this.generateSummary(model, userText, conversationId)
+			const summaryPromise = !session || editMessageIndex === 0
+				? this.generateSummary(model, userText, sessionId)
 				: undefined;
 			modelName = model.name;
 			await this.panel.webview.postMessage({ type: 'started', requestId, model: modelName });
@@ -296,36 +294,36 @@ export class OnlyChatPanelController implements vscode.Disposable {
 			}
 			const tokenUsage = await resolveTokenUsage(response, model, answer, inputTokenCountPromise, cancellation.token);
 
-			const updatedConversation = conversation ?? createStoredConversation(conversationId, userText);
-			updatedConversation.messages.push(
+			const updatedSession = session ?? createStoredSession(sessionId, userText);
+			updatedSession.messages.push(
 				{ role: 'user', content: userText },
 				{ role: 'assistant', content: answer, model: modelName, tokenUsage },
 			);
-			updatedConversation.updatedAt = Date.now();
-			if (!conversation) {
-				this.document.conversations.push(updatedConversation);
+			updatedSession.updatedAt = Date.now();
+			if (!session) {
+				this.document.sessions.push(updatedSession);
 			}
-			await this.manager.persist(this.currentConversationId);
+			await this.manager.persist(this.currentSessionId);
 			await this.panel.webview.postMessage({ type: 'completed', requestId, tokenUsage });
-			await Promise.all([this.renderConversations(), this.refreshConversationHistory()]);
+			await Promise.all([this.renderSessions(), this.refreshSessionHistory()]);
 			if (summaryPromise) {
-				void summaryPromise.then(summary => this.applyGeneratedSummary(conversationId, summary));
+				void summaryPromise.then(summary => this.applyGeneratedSummary(sessionId, summary));
 			}
 		} catch (error) {
-			this.cancelSummary(conversationId);
+			this.cancelSummary(sessionId);
 			if (error instanceof vscode.CancellationError || cancellation.token.isCancellationRequested) {
-				const updatedConversation = conversation ?? createStoredConversation(conversationId, userText);
-				updatedConversation.messages.push({ role: 'user', content: userText });
+				const updatedSession = session ?? createStoredSession(sessionId, userText);
+				updatedSession.messages.push({ role: 'user', content: userText });
 				if (answer) {
-					updatedConversation.messages.push({ role: 'assistant', content: answer, model: modelName });
+					updatedSession.messages.push({ role: 'assistant', content: answer, model: modelName });
 				}
-				updatedConversation.updatedAt = Date.now();
-				if (!conversation) {
-					this.document.conversations.push(updatedConversation);
+				updatedSession.updatedAt = Date.now();
+				if (!session) {
+					this.document.sessions.push(updatedSession);
 				}
-				await this.manager.persist(this.currentConversationId);
+				await this.manager.persist(this.currentSessionId);
 				await this.panel.webview.postMessage({ type: 'cancelled', requestId });
-				await Promise.all([this.renderConversations(), this.refreshConversationHistory()]);
+				await Promise.all([this.renderSessions(), this.refreshSessionHistory()]);
 			} else {
 				const errorDetails = describeError(error);
 				await this.panel.webview.postMessage({
@@ -351,60 +349,60 @@ export class OnlyChatPanelController implements vscode.Disposable {
 	private async generateSummary(
 		model: vscode.LanguageModelChat,
 		userText: string,
-		conversationId: string,
+		sessionId: string,
 	): Promise<string> {
 		const cancellation = new vscode.CancellationTokenSource();
-		this.summaryCancellations.set(conversationId, cancellation);
+		this.summaryCancellations.set(sessionId, cancellation);
 		let summary = '';
 		try {
 			const response = await model.sendRequest([
 				vscode.LanguageModelChatMessage.User(
-					`Create a concise conversation title that captures the user's intent. `
+					`Create a concise chat title that captures the user's intent. `
 					+ `Use the same language as the user, no more than 12 words, and output only the title without quotes or punctuation wrappers.\n\nUser input:\n${userText}`,
 				),
 			], {}, cancellation.token);
 			for await (const chunk of response.text) {
 				summary = normalizeGeneratedSummary(summary + chunk);
 				if (summary) {
-					await this.postSummary(conversationId, summary);
+					await this.postSummary(sessionId, summary);
 				}
 			}
 			return summary || createSummary(userText);
 		} catch {
 			return createSummary(userText);
 		} finally {
-			if (this.summaryCancellations.get(conversationId) === cancellation) {
-				this.summaryCancellations.delete(conversationId);
+			if (this.summaryCancellations.get(sessionId) === cancellation) {
+				this.summaryCancellations.delete(sessionId);
 			}
 			cancellation.dispose();
 		}
 	}
 
-	private async postSummary(conversationId: string, summary: string): Promise<void> {
+	private async postSummary(sessionId: string, summary: string): Promise<void> {
 		await Promise.all(this.manager.getEditors().map(editor => {
-			if (editor.currentConversationId === conversationId) {
+			if (editor.currentSessionId === sessionId) {
 				editor.panel.title = createTabTitle(summary);
 			}
-			return editor.panel.webview.postMessage({ type: 'summaryChunk', conversationId, summary });
+			return editor.panel.webview.postMessage({ type: 'summaryChunk', sessionId, summary });
 		}));
 	}
 
-	private async applyGeneratedSummary(conversationId: string, summary: string): Promise<void> {
-		const conversation = this.document.conversations.find(candidate => candidate.id === conversationId);
-		if (!conversation) {
+	private async applyGeneratedSummary(sessionId: string, summary: string): Promise<void> {
+		const session = this.document.sessions.find(candidate => candidate.id === sessionId);
+		if (!session) {
 			return;
 		}
-		conversation.summary = summary;
-		await this.manager.persist(this.currentConversationId);
-		await Promise.all(this.manager.getEditors().map(editor => editor.renderConversations()));
+		session.summary = summary;
+		await this.manager.persist(this.currentSessionId);
+		await Promise.all(this.manager.getEditors().map(editor => editor.renderSessions()));
 	}
 
-	private cancelSummary(conversationId: string): void {
-		this.summaryCancellations.get(conversationId)?.cancel();
+	private cancelSummary(sessionId: string): void {
+		this.summaryCancellations.get(sessionId)?.cancel();
 	}
 }
 
-function createStoredConversation(id: string, userText: string): StoredConversation {
+function createStoredSession(id: string, userText: string): StoredSession {
 	return {
 		id,
 		summary: createSummary(userText),

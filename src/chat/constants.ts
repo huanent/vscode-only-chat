@@ -1,6 +1,6 @@
 export const commandIds = {
 	open: 'onlyChat.open',
-	newConversation: 'onlyChat.newConversation',
+	newChat: 'onlyChat.newChat',
 	newTab: 'onlyChat.newTab',
 } as const;
 
@@ -10,9 +10,6 @@ export const webviewFocusContextKey = 'onlyChat.webviewFocus';
 export const storageKeys = {
 	selectedModel: 'onlyChat.selectedModelId',
 	cachedModels: 'onlyChat.cachedModels',
-	conversations: 'onlyChat.conversations',
-	currentConversation: 'onlyChat.currentConversationId',
-	legacySelectedModel: 'temporaryChat.selectedModelId',
-	legacyConversation: 'temporaryChat.conversation',
-	legacyConversations: 'temporaryChat.conversations',
+	sessions: 'onlyChat.sessions',
+	currentSession: 'onlyChat.currentSessionId',
 } as const;

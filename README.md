@@ -8,10 +8,10 @@ A focused AI chat editor for VS Code, powered by the Language Model API. Chat wi
 
 - **Model selection** — Use any language model available in VS Code and switch models for each request.
 - **Rich responses** — Stream Markdown with syntax highlighting, tables, and math.
-- **Conversation history** — Create, switch, and delete conversations stored in VS Code or a custom directory.
-- **Multiple tabs** — Open several chat tabs and continue from shared conversation history.
-- **Message controls** — Copy responses, edit earlier messages, regenerate the following conversation, or stop an active request.
-- **Custom instructions** — Add a conversation prompt through VS Code settings.
+- **Chat history** — Create, switch, and delete chats stored in VS Code or a custom directory.
+- **Multiple tabs** — Open several chat tabs and continue from shared chat history.
+- **Message controls** — Copy responses, edit earlier messages, regenerate the following chat, or stop an active request.
+- **Custom instructions** — Add a chat prompt through VS Code settings.
 
 ## Usage
 
@@ -26,12 +26,12 @@ VS Code may request permission to access language models when you send the first
 
 | Action | macOS | Windows / Linux |
 | --- | --- | --- |
-| Open Only Chat / new conversation when focused | `Cmd+Shift+I` | `Ctrl+Shift+I` |
+| Open Only Chat / new chat when focused | `Cmd+Shift+I` | `Ctrl+Shift+I` |
 | New chat tab | `Cmd+T` | `Ctrl+T` |
 
 ## Settings
 
 | Setting | Description |
 | --- | --- |
-| `onlyChat.prompt` | Instructions added to every conversation. |
-| `onlyChat.storagePath` | Machine-local directory used to store each conversation as a separate JSON file. Supports `~`; reload VS Code after changing it. The value is not included in Settings Sync. |
+| `onlyChat.prompt` | Instructions added to every chat. |
+| `onlyChat.storagePath` | Machine-local directory used to store each chat as a separate JSON file. Supports `~`; reload VS Code after changing it. The value is not included in Settings Sync. |

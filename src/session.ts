@@ -13,15 +13,15 @@ export type StoredMessage = {
 	tokenUsage?: TokenUsage;
 };
 
-export type StoredConversation = {
+export type StoredSession = {
 	id: string;
 	summary: string;
 	updatedAt: number;
 	messages: StoredMessage[];
 };
 
-export function createConversation(messages: StoredMessage[]): StoredConversation {
-	const firstUserMessage = messages.find(message => message.role === 'user')?.content ?? 'New conversation';
+export function createSession(messages: StoredMessage[]): StoredSession {
+	const firstUserMessage = messages.find(message => message.role === 'user')?.content ?? 'New Chat';
 	return {
 		id: randomUUID(),
 		summary: createSummary(firstUserMessage),
@@ -49,10 +49,10 @@ export function createTabTitle(text: string) {
 	return summary.length > 20 ? `${summary.slice(0, 20)}…` : summary;
 }
 
-export function getConversationSummary(conversation: StoredConversation) {
-	return createSummary(getConversationTitle(conversation));
+export function getSessionSummary(session: StoredSession) {
+	return createSummary(getSessionTitle(session));
 }
 
-export function getConversationTitle(conversation: StoredConversation) {
-	return conversation.summary.replace(/\s+/g, ' ').trim();
+export function getSessionTitle(session: StoredSession) {
+	return session.summary.replace(/\s+/g, ' ').trim();
 }

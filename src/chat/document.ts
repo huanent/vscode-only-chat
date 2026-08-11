@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import type { StoredConversation } from '../conversation';
+import type { StoredSession } from '../session';
 
 export class OnlyChatDocument implements vscode.CustomDocument {
 	constructor(
 		readonly uri: vscode.Uri,
-		readonly conversations: StoredConversation[],
+		readonly sessions: StoredSession[],
 	) { }
 
 	dispose(): void { }

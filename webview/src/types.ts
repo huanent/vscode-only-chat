@@ -13,7 +13,7 @@ export type StoredMessage = {
 	errorDetails?: string;
 };
 
-export type ConversationItem = {
+export type SessionItem = {
 	id: string;
 	summary: string;
 	updatedAt: number;
@@ -27,12 +27,12 @@ export type ModelItem = {
 };
 
 export type InboundMessage =
-	| { type: 'conversationHistory'; conversations: ConversationItem[] }
+	| { type: 'sessionHistory'; sessions: SessionItem[] }
 	| {
-		type: 'conversations';
-		currentConversationId: string;
+		type: 'sessions';
+		currentSessionId: string;
 		messages: StoredMessage[];
-		conversations: ConversationItem[];
+		sessions: SessionItem[];
 	}
 	| { type: 'models'; selectedModelId?: string; models: ModelItem[] }
 	| { type: 'modelsError'; message: string }
@@ -41,4 +41,4 @@ export type InboundMessage =
 	| { type: 'completed'; requestId: string; tokenUsage?: TokenUsage }
 	| { type: 'cancelled'; requestId: string }
 	| { type: 'error'; requestId?: string; message: string; details?: string; retryWithoutEdit?: boolean }
-	| { type: 'summaryChunk'; conversationId: string; summary: string };
+	| { type: 'summaryChunk'; sessionId: string; summary: string };

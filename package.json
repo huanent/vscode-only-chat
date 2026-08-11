@@ -1,8 +1,8 @@
 {
   "name": "only-chat",
   "displayName": "Only Chat",
-  "description": "Copilot-powered chat for focused conversations.",
-  "version": "1.7.1",
+  "description": "Copilot-powered chat for focused chats.",
+  "version": "1.7.2",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -43,7 +43,7 @@
         "category": "Only Chat"
       },
       {
-        "command": "onlyChat.newConversation",
+        "command": "onlyChat.newChat",
         "title": "New Chat",
         "category": "Only Chat",
         "icon": "$(add)"
@@ -57,7 +57,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "onlyChat.newConversation",
+          "command": "onlyChat.newChat",
           "when": "activeCustomEditorId == onlyChat.editor",
           "group": "navigation"
         }
@@ -71,7 +71,7 @@
         "when": "!onlyChat.webviewFocus"
       },
       {
-        "command": "onlyChat.newConversation",
+        "command": "onlyChat.newChat",
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i",
         "when": "activeCustomEditorId == onlyChat.editor && onlyChat.webviewFocus"
@@ -89,13 +89,13 @@
         "onlyChat.prompt": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The prompt used for conversations.",
+          "markdownDescription": "The prompt used for chats.",
           "scope": "window"
         },
         "onlyChat.storagePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Directory for storing conversation JSON files. Supports `~`. Leave empty to use VS Code storage.",
+          "markdownDescription": "Directory for storing chat JSON files. Supports `~`. Leave empty to use VS Code storage.",
           "scope": "machine"
         }
       }

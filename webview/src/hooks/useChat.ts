@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { type PendingRequest, updateAssistant } from '../components/message/chatMessages';
 import { postMessage } from '../services/vscode';
-import type { ConversationItem, InboundMessage, ModelItem, StoredMessage } from '../types';
+import type { InboundMessage, ModelItem, SessionItem, StoredMessage } from '../types';
 
 export function useChat() {
 	const [messages, setMessages] = useState<StoredMessage[]>([]);
-	const [conversations, setConversations] = useState<ConversationItem[]>([]);
-	const [currentConversationId, setCurrentConversationId] = useState<string>();
+	const [sessions, setSessions] = useState<SessionItem[]>([]);
+	const [currentSessionId, setCurrentSessionId] = useState<string>();
 	const [models, setModels] = useState<ModelItem[]>([]);
 	const [selectedModelId, setSelectedModelId] = useState('');
 	const [modelsError, setModelsError] = useState(false);
@@ -31,13 +31,13 @@ export function useChat() {
 			const message = event.data;
 			const pendingRequest = pendingRequestRef.current;
 			switch (message.type) {
-				case 'conversationHistory':
-					setConversations(message.conversations);
+				case 'sessionHistory':
+					setSessions(message.sessions);
 					return;
-				case 'conversations':
-					setCurrentConversationId(message.currentConversationId);
+				case 'sessions':
+					setCurrentSessionId(message.currentSessionId);
 					setMessages(message.messages);
-					setConversations(message.conversations);
+					setSessions(message.sessions);
 					setEditingIndex(undefined);
 					setBusy(false);
 					pendingRequestRef.current = undefined;
@@ -85,9 +85,9 @@ export function useChat() {
 					setBusy(false);
 					return;
 				case 'summaryChunk':
-					setConversations(current => current.map(conversation => conversation.id === message.conversationId
-						? { ...conversation, summary: message.summary }
-						: conversation));
+					setSessions(current => current.map(session => session.id === message.sessionId
+						? { ...session, summary: message.summary }
+						: session));
 					return;
 			}
 		};
@@ -211,15 +211,15 @@ export function useChat() {
 		requestAnimationFrame(() => inputRef.current?.focus());
 	};
 
-	const selectConversation = (conversationId: string) => {
+	const selectSession = (sessionId: string) => {
 		setHistoryVisible(false);
-		postMessage({ type: 'selectConversation', conversationId });
+		postMessage({ type: 'selectSession', sessionId });
 	};
 
 	return {
 		messages,
-		conversations,
-		currentConversationId,
+		sessions,
+		currentSessionId,
 		models,
 		selectedModelId,
 		modelsError,
@@ -235,8 +235,8 @@ export function useChat() {
 		setHistoryQuery,
 		setInput,
 		selectModel,
-		selectConversation,
-		deleteConversation: (conversationId: string) => postMessage({ type: 'deleteConversation', conversationId }),
+		selectSession,
+		deleteSession: (sessionId: string) => postMessage({ type: 'deleteSession', sessionId }),
 		editMessage,
 		regenerate,
 		retry,
