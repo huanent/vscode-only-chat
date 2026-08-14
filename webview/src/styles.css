@@ -1,46 +1,13 @@
 @import "tailwindcss";
 
-@theme {
-	--font-sans: var(--vscode-font-family);
-	--text-vscode: var(--vscode-font-size);
-	--color-app: var(--vscode-editor-background);
-	--color-foreground: var(--vscode-foreground);
-	--color-muted: var(--vscode-descriptionForeground);
-	--color-border: var(--vscode-panel-border);
-	--color-focus: var(--vscode-focusBorder);
-	--color-icon: var(--vscode-icon-foreground);
-	--color-input: var(--vscode-input-background, rgba(127, 127, 127, .08));
-	--color-input-foreground: var(--vscode-input-foreground);
-	--color-input-placeholder: var(--vscode-input-placeholderForeground);
-	--color-toolbar-hover: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
-	--color-hover: var(--vscode-list-hoverBackground);
-	--color-selection: var(--vscode-list-activeSelectionBackground);
-	--color-selection-foreground: var(--vscode-list-activeSelectionForeground);
-	--color-menu: var(--vscode-menu-background, var(--vscode-editorWidget-background));
-	--color-menu-foreground: var(--vscode-menu-foreground, var(--vscode-foreground));
-	--color-menu-selection: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
-	--color-widget-border: var(--vscode-widget-border, var(--vscode-panel-border));
-	--color-user-message: var(--vscode-chat-requestBackground, var(--vscode-input-background));
-	--color-user-message-border: var(--vscode-chat-requestBorder, var(--vscode-panel-border));
-	--color-error: var(--vscode-inputValidation-errorBackground, var(--vscode-input-background));
-	--color-error-border: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
-	--color-error-foreground: var(--vscode-errorForeground);
-	--color-code: var(--vscode-textCodeBlock-background);
-	--color-code-foreground: var(--vscode-textPreformat-foreground);
-	--color-link: var(--vscode-textLink-foreground);
-	--color-quote-border: var(--vscode-textBlockQuote-border);
-	--shadow-widget: 0 8px 24px var(--vscode-widget-shadow);
-	--shadow-menu: 0 6px 20px var(--vscode-widget-shadow);
-}
-
 @layer base {
 	* { box-sizing: border-box; }
 	html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-	body { color: var(--color-foreground); background: var(--color-app); font-family: var(--font-sans); font-size: var(--text-vscode); }
+	body { color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
 	button, input { font: inherit; }
 	button { cursor: pointer; }
 	button:disabled { cursor: default; opacity: .5; }
-	button:focus-visible, input:focus-visible { outline: 1px solid var(--color-focus); outline-offset: -1px; }
+	button:focus-visible, input:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 	.codicon[class*='codicon-'] {
 		font-size: inherit;
 		line-height: 1;
@@ -48,7 +15,7 @@
 }
 
 .message-input:empty::before {
-	color: var(--color-input-placeholder);
+	color: var(--vscode-input-placeholderForeground);
 	content: attr(data-placeholder);
 	pointer-events: none;
 }
@@ -62,8 +29,8 @@
 	pointer-events: none;
 	transition: opacity 100ms ease-out;
 }
-.message-list-fade-top { top: 0; background: linear-gradient(to bottom, var(--color-app), transparent); }
-.message-list-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--color-app), transparent); }
+.message-list-fade-top { top: 0; background: linear-gradient(to bottom, var(--vscode-editor-background), transparent); }
+.message-list-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--vscode-editor-background), transparent); }
 
 .markdown-content > :first-child { margin-top: 0; }
 .markdown-content > :last-child { margin-bottom: 0; }
@@ -76,15 +43,15 @@
 .markdown-content ol { padding-left: 22px; }
 .markdown-content ul { list-style-type: disc; }
 .markdown-content ol { list-style-type: decimal; }
-.markdown-content blockquote { padding-left: 10px; border-left: 2px solid var(--color-quote-border); color: var(--color-muted); }
-.markdown-content code { padding: 1px 3px; border-radius: 3px; color: var(--color-code-foreground); background: var(--color-code); font-family: var(--vscode-editor-font-family); }
-.markdown-content pre { overflow-x: auto; padding: 10px; border-radius: 4px; background: var(--color-code); }
+.markdown-content blockquote { padding-left: 10px; border-left: 2px solid var(--vscode-textBlockQuote-border); color: var(--vscode-descriptionForeground); }
+.markdown-content code { padding: 1px 3px; border-radius: 3px; color: var(--vscode-textPreformat-foreground); background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); }
+.markdown-content pre { overflow-x: auto; padding: 10px; border-radius: 4px; background: var(--vscode-textCodeBlock-background); }
 .markdown-content pre code { padding: 0; background: transparent; }
-.markdown-content a { color: var(--color-link); }
+.markdown-content a { color: var(--vscode-textLink-foreground); }
 .markdown-content .markdown-overflow { max-width: 100%; overflow-x: auto; }
 .markdown-content table { width: max-content; min-width: 100%; border-collapse: collapse; }
 .markdown-content th,
-.markdown-content td { padding: 5px 8px; border: 1px solid var(--color-border); text-align: left; }
+.markdown-content td { padding: 5px 8px; border: 1px solid var(--vscode-panel-border); text-align: left; }
 .markdown-content .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 .markdown-content :is(pre, .katex-display)[data-overflow-right="true"] {
 	-webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
@@ -111,7 +78,7 @@
 	width: 5px;
 	height: 5px;
 	border-radius: 50%;
-	background: var(--color-muted);
+	background: var(--vscode-descriptionForeground);
 	animation: loading-dot 1.2s ease-in-out infinite;
 }
 

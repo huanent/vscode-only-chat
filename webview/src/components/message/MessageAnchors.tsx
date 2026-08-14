@@ -25,7 +25,7 @@ export function MessageAnchors({ messages, indexes, activeIndex, onSelect }: Mes
 						aria-current={active ? 'location' : undefined}
 						onClick={() => onSelect(messageIndex)}
 					>
-						<span className={`block rounded-full transition-[width,height,background-color,opacity] duration-150 ${active ? 'h-3 w-1 bg-focus' : 'size-1 bg-muted opacity-45 group-hover/anchor:h-2 group-hover/anchor:w-1 group-hover/anchor:bg-foreground group-hover/anchor:opacity-80'}`} />
+						<span className={`block rounded-full transition-[width,height,background-color,opacity] duration-150 ${active ? 'h-3 w-1 bg-(--vscode-focusBorder)' : 'size-1 bg-(--vscode-descriptionForeground) opacity-45 group-hover/anchor:h-2 group-hover/anchor:w-1 group-hover/anchor:bg-(--vscode-foreground) group-hover/anchor:opacity-80'}`} />
 					</button>
 				);
 			})}

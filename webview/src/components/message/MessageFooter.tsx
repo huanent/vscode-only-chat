@@ -25,9 +25,9 @@ export function MessageFooter({ message, busy, copied, onEdit, onRegenerate, onC
 				onRegenerate={onRegenerate}
 				onCopy={onCopy}
 			/>
-			{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={message.model}>{message.model}</span>}
+			{message.model && <span className="max-w-55 overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-(--vscode-descriptionForeground)" title={message.model}>{message.model}</span>}
 			{message.tokenUsage && (
-				<span className="max-w-full overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-muted" title={formatTokenUsageTitle(message.tokenUsage)}>
+				<span className="max-w-full overflow-hidden text-[11px] text-ellipsis whitespace-nowrap text-(--vscode-descriptionForeground)" title={formatTokenUsageTitle(message.tokenUsage)}>
 					{formatTokenCount(message.tokenUsage.input)} in · {formatTokenCount(message.tokenUsage.output)} out
 					{message.tokenUsage.cachedInput !== undefined && ` · ${formatTokenCount(message.tokenUsage.cachedInput)} cached`}
 				</span>

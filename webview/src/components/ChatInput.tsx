@@ -18,11 +18,11 @@ type ChatInputProps = {
 
 export function ChatInput({ inputRef, input, busy, editingIndex, models, selectedModelId, modelsError, onInputChange, onSelectModel, onSend }: ChatInputProps) {
 	return (
-		<section className="w-[calc(100%-40px)] max-w-210 justify-self-center bg-app pt-2 pb-2 max-[620px]:w-[calc(100%-20px)]">
-			<div className={`relative rounded-lg border bg-input transition-colors duration-75 focus-within:border-focus ${editingIndex !== undefined ? 'border-focus shadow-[0_0_0_1px_var(--color-focus)]' : 'border-border'}`}>
+		<section className="w-[calc(100%-40px)] max-w-210 justify-self-center bg-(--vscode-editor-background) pt-2 pb-2 max-[620px]:w-[calc(100%-20px)]">
+			<div className={`relative rounded-lg border bg-[var(--vscode-input-background,rgba(127,127,127,.08))] transition-colors duration-75 focus-within:border-(--vscode-focusBorder) ${editingIndex !== undefined ? 'border-(--vscode-focusBorder) shadow-[0_0_0_1px_var(--vscode-focusBorder)]' : 'border-(--vscode-panel-border)'}`}>
 				<div
 					ref={inputRef}
-					className="message-input min-h-9 max-h-45 w-full overflow-y-auto px-3 pt-2 pb-1 text-3 leading-[1.45] text-input-foreground outline-none whitespace-pre-wrap wrap-break-word data-[disabled=true]:opacity-60"
+					className="message-input min-h-9 max-h-45 w-full overflow-y-auto px-3 pt-2 pb-1 text-3 leading-[1.45] text-(--vscode-input-foreground) outline-none whitespace-pre-wrap wrap-break-word data-[disabled=true]:opacity-60"
 					role="textbox"
 					aria-label="Message"
 					aria-multiline="true"

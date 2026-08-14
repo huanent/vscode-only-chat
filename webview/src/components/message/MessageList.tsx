@@ -26,13 +26,13 @@ export function MessageList({ messages, busy, editingIndex, onEdit, onRegenerate
 			<main className="h-full w-[calc(100%+12px)] overflow-x-hidden overflow-y-auto pr-4 pl-1" ref={navigation.containerRef} onScroll={navigation.handleScroll}>
 				{messages.length === 0 && (
 					<EmptyState
-						icon={<span className="codicon codicon-comment-discussion text-[32px]! leading-none text-icon" aria-hidden="true" />}
+						icon={<span className="codicon codicon-comment-discussion text-[32px]! leading-none text-(--vscode-icon-foreground)" aria-hidden="true" />}
 						title={greeting}
 						titleAs="h1"
 						description={<>“{quote.text}” — {quote.author}</>}
 						className="h-full"
 						titleClassName="mt-3.5 text-xl font-semibold"
-						descriptionClassName="mt-2 max-w-105 text-[12px] leading-5 text-muted"
+						descriptionClassName="mt-2 max-w-105 text-[12px] leading-5 text-(--vscode-descriptionForeground)"
 					/>
 				)}
 				{messages.length > 0 && <div className="min-h-full pt-8 pb-10">{messages.map((message, index) => (

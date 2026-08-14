@@ -22,7 +22,7 @@ export function MessageContent({ content, isUser, isEditing, isLoading }: Messag
 
 	return (
 		<Suspense fallback={<div className="min-w-0 max-w-full whitespace-pre-wrap wrap-anywhere">{content}</div>}>
-			<MarkdownContent text={content} className={`${isUser ? 'rounded-md border border-user-message-border bg-user-message px-3 py-2' : ''} ${isEditing ? 'border-focus shadow-[0_0_0_1px_var(--color-focus)]' : ''}`} />
+			<MarkdownContent text={content} className={`${isUser ? 'rounded-md border border-[var(--vscode-chat-requestBorder,var(--vscode-panel-border))] bg-[var(--vscode-chat-requestBackground,var(--vscode-input-background))] px-3 py-2' : ''} ${isEditing ? 'border-(--vscode-focusBorder) shadow-[0_0_0_1px_var(--vscode-focusBorder)]' : ''}`} />
 		</Suspense>
 	);
 }

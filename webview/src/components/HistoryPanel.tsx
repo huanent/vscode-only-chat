@@ -46,12 +46,12 @@ export function HistoryPanel({
 	};
 
 	return (
-		<aside ref={panelRef} className="absolute top-11 left-2 z-115 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-widget-border bg-menu shadow-widget" aria-label="Chat history">
-			<div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 border-b border-widget-border p-1.5">
-				<label className="grid h-8 min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center rounded border border-transparent bg-input px-2 text-input-foreground focus-within:border-focus">
-					<span className="codicon codicon-search text-[14px] leading-none text-muted" aria-hidden="true" />
+		<aside ref={panelRef} className="absolute top-11 left-2 z-115 grid max-h-[min(500px,calc(100vh-56px))] w-[min(340px,calc(100%-16px))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-[var(--vscode-widget-border,var(--vscode-panel-border))] bg-[var(--vscode-menu-background,var(--vscode-editorWidget-background))] shadow-[0_8px_24px_var(--vscode-widget-shadow)]" aria-label="Chat history">
+			<div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 border-b border-[var(--vscode-widget-border,var(--vscode-panel-border))] p-1.5">
+				<label className="grid h-8 min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center rounded border border-transparent bg-[var(--vscode-input-background,rgba(127,127,127,.08))] px-2 text-(--vscode-input-foreground) focus-within:border-(--vscode-focusBorder)">
+					<span className="codicon codicon-search text-[14px] leading-none text-(--vscode-descriptionForeground)" aria-hidden="true" />
 					<input
-						className="h-full min-w-0 border-0 bg-transparent p-0 text-[13px] text-inherit outline-none placeholder:text-input-placeholder"
+						className="h-full min-w-0 border-0 bg-transparent p-0 text-[13px] text-inherit outline-none placeholder:text-(--vscode-input-placeholderForeground)"
 						type="search"
 						value={query}
 						onChange={event => onQueryChange(event.target.value)}
@@ -68,17 +68,17 @@ export function HistoryPanel({
 							icon={normalizedQuery ? <span className="codicon codicon-search text-[20px] leading-none" aria-hidden="true" /> : <span className="codicon codicon-comment-discussion text-[20px] leading-none" aria-hidden="true" />}
 							title={normalizedQuery ? 'No matching chats' : 'No chats yet'}
 							description={normalizedQuery ? 'Try a different keyword.' : 'Your recent chats will appear here.'}
-							className="min-h-40 gap-2 p-6 text-xs leading-4 text-muted"
-							titleClassName="text-[13px] text-foreground"
+							className="min-h-40 gap-2 p-6 text-xs leading-4 text-(--vscode-descriptionForeground)"
+							titleClassName="text-[13px] text-(--vscode-foreground)"
 						/>
 					</li>
 				)}
 				{groupSessions(visibleSessions).map(group => (
 					<li key={group.label}>
-						<div className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold text-muted uppercase">{group.label}</div>
+						<div className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold text-(--vscode-descriptionForeground) uppercase">{group.label}</div>
 						<ul className="m-0 list-none p-0">
 							{group.items.map(session => (
-								<li className={`group grid grid-cols-[minmax(0,1fr)_32px] items-center rounded p-1 ${session.id === currentSessionId ? 'bg-hover text-selection-foreground' : 'hover:bg-selection'}`} key={session.id}>
+								<li className={`group grid grid-cols-[minmax(0,1fr)_32px] items-center rounded p-1 ${session.id === currentSessionId ? 'bg-(--vscode-list-hoverBackground) text-(--vscode-list-activeSelectionForeground)' : 'hover:bg-(--vscode-list-activeSelectionBackground)'}`} key={session.id}>
 									<TextButton className="grid h-full min-w-0 grid-cols-[24px_minmax(0,1fr)] items-center pl-2 text-left text-4 text-inherit" onClick={() => onSelect(session.id)}>
 										<span className="codicon codicon-comment text-[14px] leading-none" aria-hidden="true" />
 										<span className="overflow-hidden text-ellipsis whitespace-nowrap leading-5">{session.summary}</span>

@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "Copilot-powered chat for focused chats.",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
@@ -21,7 +21,9 @@
   "categories": [
     "Chat"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
