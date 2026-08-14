@@ -54,21 +54,21 @@ export class SessionStorage {
 
 	private async loadFromDirectory(): Promise<StoredSession[]> {
 		const entries = await vscode.workspace.fs.readDirectory(this.storageUri!);
-		const sessions: StoredSession[] = [];
-		for (const [name, type] of entries) {
+		const sessions = await Promise.all(entries.map(async ([name, type]) => {
 			if (type !== vscode.FileType.File || path.extname(name).toLowerCase() !== '.json') {
-				continue;
+				return undefined;
 			}
 			try {
 				const content = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(this.storageUri!, name));
 				const session = JSON.parse(new TextDecoder().decode(content));
 				if (isStoredSession(session) && name === `${session.id}.json`) {
-					sessions.push(session);
 					this.persistedSessionIds.add(session.id);
+					return session;
 				}
 			} catch { }
-		}
-		return sessions;
+			return undefined;
+		}));
+		return sessions.filter(session => session !== undefined);
 	}
 
 	private async writeSession(session: StoredSession): Promise<void> {

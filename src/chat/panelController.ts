@@ -72,6 +72,10 @@ export class OnlyChatPanelController implements vscode.Disposable {
 		await this.renderSessions();
 	}
 
+	async refreshSessions(): Promise<void> {
+		await this.renderSessions();
+	}
+
 	private async handleMessage(message: WebviewMessage): Promise<void> {
 		try {
 			switch (message.type) {

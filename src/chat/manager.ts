@@ -13,6 +13,7 @@ export class OnlyChatManager implements vscode.Disposable {
 	private readonly modelService: ModelService;
 	private readonly disposables: vscode.Disposable[] = [];
 	private currentController: OnlyChatPanelController | undefined;
+	private sessionsLoaded: Promise<void> = Promise.resolve();
 
 	private constructor(
 		private readonly context: vscode.ExtensionContext,
@@ -25,8 +26,9 @@ export class OnlyChatManager implements vscode.Disposable {
 
 	static async create(context: vscode.ExtensionContext): Promise<OnlyChatManager> {
 		const sessionStorage = await SessionStorage.create(context);
-		const sessions = await sessionStorage.load();
-		return new OnlyChatManager(context, sessionStorage, sessions);
+		const manager = new OnlyChatManager(context, sessionStorage, []);
+		manager.sessionsLoaded = manager.loadSessions();
+		return manager;
 	}
 
 	register(): void {
@@ -68,10 +70,18 @@ export class OnlyChatManager implements vscode.Disposable {
 	}
 
 	async persist(currentSessionId: string): Promise<void> {
+		await this.sessionsLoaded;
 		await Promise.all([
 			this.sessionStorage.persist(this.sessions),
 			this.context.globalState.update(storageKeys.currentSession, currentSessionId),
 		]);
+	}
+
+	private async loadSessions(): Promise<void> {
+		const loadedSessions = await this.sessionStorage.load();
+		const currentSessionIds = new Set(this.sessions.map(session => session.id));
+		this.sessions.push(...loadedSessions.filter(session => !currentSessionIds.has(session.id)));
+		await Promise.all(this.getEditors().map(editor => editor.refreshSessions()));
 	}
 
 	private async open(reuseCurrent: boolean): Promise<void> {
