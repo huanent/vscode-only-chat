@@ -8,8 +8,8 @@ export function App() {
 	const chat = useChat();
 
 	return (
-		<div className="relative h-full px-2">
-			<div className="absolute top-1.5 left-1.5 z-20 flex gap-1">
+		<div className="relative h-full">
+			<div className="absolute top-1 left-1 z-20 flex gap-1">
 				<IconButton ref={chat.historyButtonRef} label="Show chat history" icon={<span className="codicon codicon-menu text-[14px] leading-none" aria-hidden="true" />} size={IconButtonSize.Medium} aria-expanded={chat.historyVisible} onClick={() => chat.setHistoryVisible(value => !value)} />
 			</div>
 			{chat.historyVisible && (

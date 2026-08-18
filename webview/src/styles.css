@@ -2,7 +2,7 @@
 
 @layer base {
 	* { box-sizing: border-box; }
-	html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+	html, body, #root { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
 	body { color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
 	button, input { font: inherit; }
 	button { cursor: pointer; }

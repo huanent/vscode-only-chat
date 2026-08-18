@@ -2,7 +2,7 @@
   "name": "only-chat",
   "displayName": "Only Chat",
   "description": "Copilot-powered chat for focused chats.",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "icon": "resources/logo.png",
   "license": "MIT",
   "publisher": "huanent",
